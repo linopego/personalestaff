@@ -8,7 +8,7 @@ import { calcolaDistanza, type RisultatoGeo, type Sede as SedeTipo } from "@/lib
    TYPES
    ═══════════════════════════════════════════ */
 
-type GeoStatus = "loading" | "unsupported" | "denied" | "ready";
+type GeoStatus = "idle" | "loading" | "unsupported" | "denied" | "ready";
 
 interface Timbratura {
   tipo: "Entrata" | "Uscita";
@@ -76,7 +76,7 @@ export default function TimbraPage() {
   }, []);
 
   // Geo
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("loading");
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [risultato, setRisultato] = useState<RisultatoGeo | null>(null);
   const [matchedSedeId, setMatchedSedeId] = useState<number | null>(null);
@@ -141,6 +141,7 @@ export default function TimbraPage() {
       setGeoStatus("unsupported");
       return;
     }
+    setGeoStatus("loading");
     setGeoLoading(true);
     setGeoError(null);
 
@@ -175,7 +176,9 @@ export default function TimbraPage() {
     );
   }, [sediDB, processCoords]);
 
-  useEffect(() => { rilevaPos(); }, [rilevaPos]);
+  // NON chiedere posizione automaticamente — iOS Safari blocca
+  // le richieste geo che non vengono da un gesto utente.
+  // Mostriamo un pulsante "Rileva posizione" al primo caricamento.
 
   /* ── Conferma timbratura ── */
   async function confermaTimbra() {
@@ -228,6 +231,18 @@ export default function TimbraPage() {
       </div>
 
       {/* ── Area Geo ── */}
+      {geoStatus === "idle" && (
+        <button
+          onClick={rilevaPos}
+          className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-accent/40 bg-accent/[0.04] py-12 active:scale-[0.97] active:bg-accent/[0.08] transition-all"
+        >
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/15">
+            <MapPinIcon className="h-8 w-8 text-accent" />
+          </div>
+          <p className="text-lg font-semibold text-foreground">Rileva la tua posizione</p>
+          <p className="text-sm text-text-muted">Tocca per attivare il GPS e timbrare</p>
+        </button>
+      )}
       {geoStatus === "loading" && <GeoLoading />}
       {geoStatus === "unsupported" && <GeoUnsupported />}
       {geoStatus === "denied" && <GeoDenied onRetry={rilevaPos} errorMsg={geoError} />}
