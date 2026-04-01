@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 
 /* ═══════════════════════════════════════════
    TYPES
@@ -16,6 +16,22 @@ interface TimbraturaStorico {
   lng: number;
   modificata: boolean;
   noteModifica?: string;
+}
+
+interface ApiTimbratura {
+  id: number;
+  userId: number;
+  sedeId: number;
+  tipo: string;
+  orario: string;       // ISO timestamp string
+  lat: number;
+  lng: number;
+  modificataManualmente: boolean;
+  noteModifica: string | null;
+  modifiedBy: number | null;
+  dipNome: string;
+  dipCognome: string;
+  sedeNome: string;
 }
 
 interface GiornoData {
@@ -35,54 +51,25 @@ const GIORNI_NOME = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì"
 const MESI_NOME = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
 /* ═══════════════════════════════════════════
-   MOCK DATA — ~3 settimane di timbrature
+   API TRANSFORM
    ═══════════════════════════════════════════ */
 
-let _id = 0;
-function mk(data: string, orario: string, tipo: "Entrata" | "Uscita", sede: string, mod = false, note?: string): TimbraturaStorico {
-  const coords: Record<string, { lat: number; lng: number }> = {
-    "La Casa dei Gelsi": { lat: 45.698997, lng: 11.770444 },
-    "Tenuta Villa Peggy's": { lat: 45.672833, lng: 11.732111 },
-    "Studios Club / TooLate": { lat: 45.775361, lng: 11.689500 },
+function transformApiTimbratura(t: ApiTimbratura): TimbraturaStorico {
+  const dt = new Date(t.orario);
+  const data = isoDate(dt);
+  const orario = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+  return {
+    id: t.id,
+    data,
+    orario,
+    tipo: t.tipo as "Entrata" | "Uscita",
+    sede: t.sedeNome,
+    lat: t.lat,
+    lng: t.lng,
+    modificata: t.modificataManualmente,
+    noteModifica: t.noteModifica ?? undefined,
   };
-  const c = coords[sede] ?? coords["La Casa dei Gelsi"];
-  return { id: ++_id, data, orario, tipo, sede, lat: c.lat + (Math.random() - 0.5) * 0.0005, lng: c.lng + (Math.random() - 0.5) * 0.0005, modificata: mod, noteModifica: note };
 }
-
-const MOCK_TIMBRATURE: TimbraturaStorico[] = [
-  // Settimana corrente (30 Mar - 5 Apr 2026) — oggi è 1 Apr
-  mk("2026-03-30", "08:05", "Entrata", "La Casa dei Gelsi"),
-  mk("2026-03-30", "16:10", "Uscita", "La Casa dei Gelsi"),
-  mk("2026-03-31", "09:00", "Entrata", "Tenuta Villa Peggy's"),
-  mk("2026-03-31", "17:05", "Uscita", "Tenuta Villa Peggy's"),
-  mk("2026-04-01", "08:02", "Entrata", "La Casa dei Gelsi"), // oggi — turno aperto
-
-  // Settimana precedente (23-29 Mar)
-  mk("2026-03-23", "18:30", "Entrata", "Studios Club / TooLate"),
-  mk("2026-03-24", "02:15", "Uscita", "Studios Club / TooLate", true, "Uscita registrata giorno successivo, corretta manualmente dall'amministratore"),
-  mk("2026-03-24", "09:00", "Entrata", "La Casa dei Gelsi"),
-  mk("2026-03-24", "17:00", "Uscita", "La Casa dei Gelsi"),
-  mk("2026-03-25", "08:55", "Entrata", "Tenuta Villa Peggy's"),
-  mk("2026-03-25", "16:50", "Uscita", "Tenuta Villa Peggy's"),
-  mk("2026-03-26", "08:00", "Entrata", "La Casa dei Gelsi"),
-  mk("2026-03-26", "16:05", "Uscita", "La Casa dei Gelsi"),
-  mk("2026-03-27", "18:00", "Entrata", "Studios Club / TooLate"),
-  mk("2026-03-28", "02:00", "Uscita", "Studios Club / TooLate"),
-  mk("2026-03-28", "18:00", "Entrata", "Tenuta Villa Peggy's"),
-  mk("2026-03-29", "00:30", "Uscita", "Tenuta Villa Peggy's"),
-
-  // Due settimane fa (16-22 Mar)
-  mk("2026-03-16", "08:10", "Entrata", "La Casa dei Gelsi"),
-  mk("2026-03-16", "16:15", "Uscita", "La Casa dei Gelsi"),
-  mk("2026-03-17", "09:05", "Entrata", "Tenuta Villa Peggy's"),
-  mk("2026-03-17", "17:10", "Uscita", "Tenuta Villa Peggy's"),
-  mk("2026-03-18", "08:00", "Entrata", "La Casa dei Gelsi"),
-  mk("2026-03-18", "16:00", "Uscita", "La Casa dei Gelsi"),
-  mk("2026-03-20", "18:00", "Entrata", "Studios Club / TooLate"),
-  mk("2026-03-21", "02:30", "Uscita", "Studios Club / TooLate"),
-  mk("2026-03-21", "10:00", "Entrata", "La Casa dei Gelsi"),
-  mk("2026-03-21", "16:00", "Uscita", "La Casa dei Gelsi"),
-];
 
 /* ═══════════════════════════════════════════
    DATE HELPERS
@@ -138,7 +125,7 @@ export default function StoricoPage() {
   const [tab, setTab] = useState<"settimana" | "mese">("settimana");
   const [detailTimbr, setDetailTimbr] = useState<TimbraturaStorico | null>(null);
 
-  const oggi = "2026-04-01";
+  const oggi = isoDate(new Date());
 
   return (
     <div className="flex flex-col gap-4">
@@ -220,19 +207,51 @@ export default function StoricoPage() {
    ═══════════════════════════════════════════ */
 
 function TabSettimana({ oggi, onDetail }: { oggi: string; onDetail: (t: TimbraturaStorico) => void }) {
+  const [timbrature, setTimbrature] = useState<TimbraturaStorico[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const monday = useMemo(() => getMonday(parseDate(oggi)), [oggi]);
+  const sunday = useMemo(() => {
+    const d = new Date(monday);
+    d.setDate(d.getDate() + 6);
+    return d;
+  }, [monday]);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        dataInizio: isoDate(monday),
+        dataFine: isoDate(sunday),
+      });
+      const res = await fetch(`/api/timbrature?${params.toString()}`);
+      if (!res.ok) throw new Error("Errore nel caricamento");
+      const data: ApiTimbratura[] = await res.json();
+      setTimbrature(data.map(transformApiTimbratura));
+    } catch {
+      setTimbrature([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [monday, sunday]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const giorni = useMemo(() => {
-    const monday = getMonday(parseDate(oggi));
     const result: GiornoData[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
       d.setDate(d.getDate() + i);
-      result.push(buildGiornoData(isoDate(d), MOCK_TIMBRATURE, oggi));
+      result.push(buildGiornoData(isoDate(d), timbrature, oggi));
     }
     return result;
-  }, [oggi]);
+  }, [monday, timbrature, oggi]);
+
+  if (loading) return <LoadingSpinner />;
 
   const hasAny = giorni.some((g) => g.timbrature.length > 0);
-
   if (!hasAny) return <StatoVuoto />;
 
   return (
@@ -251,9 +270,35 @@ function TabSettimana({ oggi, onDetail }: { oggi: string; onDetail: (t: Timbratu
 function TabMese({ oggi, onDetail }: { oggi: string; onDetail: (t: TimbraturaStorico) => void }) {
   const oggiDate = parseDate(oggi);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [timbrature, setTimbrature] = useState<TimbraturaStorico[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const meseDate = new Date(oggiDate.getFullYear(), oggiDate.getMonth() + monthOffset, 1);
   const meseLabel = `${MESI_NOME[meseDate.getMonth()]} ${meseDate.getFullYear()}`;
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const anno = meseDate.getFullYear();
+      const mese = meseDate.getMonth();
+      const dataInizio = isoDate(new Date(anno, mese, 1));
+      const dataFine = isoDate(new Date(anno, mese + 1, 0));
+      const params = new URLSearchParams({ dataInizio, dataFine });
+      const res = await fetch(`/api/timbrature?${params.toString()}`);
+      if (!res.ok) throw new Error("Errore nel caricamento");
+      const data: ApiTimbratura[] = await res.json();
+      setTimbrature(data.map(transformApiTimbratura));
+    } catch {
+      setTimbrature([]);
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthOffset]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const { settimane, totOre, giorniLav, mediaOre } = useMemo(() => {
     const anno = meseDate.getFullYear();
@@ -268,13 +313,11 @@ function TabMese({ oggi, onDetail }: { oggi: string; onDetail: (t: TimbraturaSto
     for (let d = 1; d <= daysInMonth; d++) {
       const dt = new Date(anno, mese, d);
       const iso = isoDate(dt);
-      const giorno = buildGiornoData(iso, MOCK_TIMBRATURE, oggi);
+      const giorno = buildGiornoData(iso, timbrature, oggi);
 
       if (giorno.timbrature.length === 0) continue;
 
       // Numero settimana nel mese (1-based)
-      const monday = getMonday(dt);
-      const weekStart = isoDate(monday);
       const weekNum = Math.ceil((d + ((new Date(anno, mese, 1).getDay() + 6) % 7)) / 7);
 
       if (!weeks.has(weekNum)) weeks.set(weekNum, []);
@@ -286,7 +329,8 @@ function TabMese({ oggi, onDetail }: { oggi: string; onDetail: (t: TimbraturaSto
 
     const mediaOre = giorniLav > 0 ? Math.round((totOre / giorniLav) * 10) / 10 : 0;
     return { settimane: [...weeks.entries()].sort((a, b) => a[0] - b[0]), totOre: Math.round(totOre * 10) / 10, giorniLav, mediaOre };
-  }, [meseDate, oggi]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timbrature, oggi, monthOffset]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -308,7 +352,9 @@ function TabMese({ oggi, onDetail }: { oggi: string; onDetail: (t: TimbraturaSto
         </button>
       </div>
 
-      {settimane.length === 0 ? (
+      {loading ? (
+        <LoadingSpinner />
+      ) : settimane.length === 0 ? (
         <StatoVuoto />
       ) : (
         <>
@@ -415,6 +461,18 @@ function GiornoCard({ giorno, onDetail }: { giorno: GiornoData; onDetail: (t: Ti
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   LOADING SPINNER
+   ═══════════════════════════════════════════ */
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center py-16">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" />
     </div>
   );
 }
