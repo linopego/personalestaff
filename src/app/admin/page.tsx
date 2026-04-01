@@ -16,7 +16,7 @@ export default function AdminDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.name} className="rounded-xl border border-border bg-card-bg p-5">
+          <div key={stat.name} className={`rounded-xl border bg-card-bg p-5 ${stat.color === "text-amber-400" ? "border-amber-500/30" : "border-border"}`}>
             <p className="text-sm font-medium text-text-muted">{stat.name}</p>
             <p className={`mt-2 text-3xl font-bold ${stat.color}`}>{stat.value}</p>
             <p className="mt-1 text-xs text-text-muted">{stat.change}</p>

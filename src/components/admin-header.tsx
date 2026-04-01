@@ -29,7 +29,7 @@ export default function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
       <div className="flex items-center gap-4">
         <div className="text-right">
           <p className="text-sm font-medium text-foreground">{user?.name ?? "Utente"}</p>
-          <p className="text-xs text-accent font-medium">
+          <p className="text-xs text-accent-warm font-medium">
             {user?.role === "admin" ? "Admin" : "Staff"}
           </p>
         </div>

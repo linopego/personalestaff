@@ -72,7 +72,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
         {/* Footer */}
         <div className="border-t border-border px-4 py-3">
-          <p className="text-xs text-text-muted">Presenze Staff v1.0</p>
+          <p className="text-xs text-text-muted">Presenze Staff <span className="text-accent-warm">v1.0</span></p>
         </div>
       </aside>
     </>
