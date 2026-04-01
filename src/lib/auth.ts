@@ -11,28 +11,45 @@ export interface User {
 
 const STORAGE_KEY = "presenze_staff_user";
 
-// Utenti demo
-const DEMO_USERS: Record<string, User & { password: string }> = {
-  admin: {
+// Utenti demo — lookup per email
+const DEMO_USERS: (User & { password: string })[] = [
+  {
     id: "1",
     name: "Marco Bianchi",
-    email: "admin@presenzestaff.it",
+    email: "admin@azienda.it",
+    role: "admin",
+    password: "Admin2024",
+  },
+  {
+    id: "2",
+    name: "Laura Rossi",
+    email: "dipendente@azienda.it",
+    role: "staff",
+    password: "Staff2024",
+  },
+  // Backwards compat — vecchie credenziali username/password
+  {
+    id: "1",
+    name: "Marco Bianchi",
+    email: "admin",
     role: "admin",
     password: "admin",
   },
-  staff: {
+  {
     id: "2",
     name: "Laura Rossi",
-    email: "staff@presenzestaff.it",
+    email: "staff",
     role: "staff",
     password: "staff",
   },
-};
+];
 
-export function login(username: string, password: string): User | null {
-  const user = DEMO_USERS[username];
-  if (user && user.password === password) {
-    const { password: _, ...userData } = user;
+export function login(emailOrUsername: string, password: string): User | null {
+  const match = DEMO_USERS.find(
+    (u) => u.email.toLowerCase() === emailOrUsername.toLowerCase() && u.password === password
+  );
+  if (match) {
+    const { password: _, ...userData } = match;
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
     }

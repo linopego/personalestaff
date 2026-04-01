@@ -1,83 +1,198 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
-  const { login } = useAuth();
-  const [username, setUsername] = useState("");
+  const { user, loading, login } = useAuth();
+
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ email?: boolean; password?: boolean }>({});
+
+  // Se già autenticato, redirect
+  useEffect(() => {
+    if (!loading && user) {
+      // Il redirect avviene tramite auth-context dopo login
+    }
+  }, [loading, user]);
+
+  // Se l'utente è già loggato, non mostrare il form
+  if (!loading && user) {
+    return (
+      <div className="flex h-full items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const user = login(username, password);
-    if (!user) {
-      setError("Credenziali non valide");
+    setFieldErrors({});
+
+    // Validazione campi
+    const errors: { email?: boolean; password?: boolean } = {};
+    if (!email.trim()) errors.email = true;
+    if (!password.trim()) errors.password = true;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
     }
+
+    setSubmitting(true);
+
+    // Simula latenza rete
+    setTimeout(() => {
+      const result = login(email.trim(), password);
+      if (!result) {
+        setError("Credenziali non corrette. Riprova.");
+        setSubmitting(false);
+      }
+      // Se login ok, il redirect avviene tramite auth-context
+    }, 800);
   }
 
+  const inputBase =
+    "w-full rounded-2xl border bg-sidebar-bg px-4 py-4 text-base text-foreground placeholder:text-text-muted transition-colors min-h-[56px] focus:outline-none focus:ring-2 focus:ring-offset-0";
+  const inputOk = `${inputBase} border-border focus:border-accent focus:ring-accent/30`;
+  const inputErr = `${inputBase} border-red-500 focus:border-red-500 focus:ring-red-500/30`;
+
   return (
-    <div className="flex h-full items-center justify-center bg-background">
+    <div className="flex min-h-full flex-col items-center justify-center bg-background px-5 py-8" style={{ paddingTop: "max(2rem, env(safe-area-inset-top))", paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-accent/15 text-accent">
-            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        {/* ── Logo & Brand ── */}
+        <div className="mb-10 flex flex-col items-center text-center">
+          <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/15 shadow-lg shadow-accent/10">
+            <svg className="h-10 w-10 text-accent" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Presenze Staff</h1>
-          <p className="mt-1 text-sm text-text-muted">Accedi al pannello di gestione</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">PresenzApp</h1>
+          <p className="mt-2 text-base text-text-muted">Gestione presenze semplice ed efficiente</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card-bg p-6 space-y-4">
+        {/* ── Form ── */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Errore globale */}
           {error && (
-            <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm text-red-400">
-              {error}
+            <div className="rounded-2xl bg-red-500/10 border border-red-500/25 px-4 py-3.5 animate-fade-in">
+              <p className="text-sm font-medium text-red-400">{error}</p>
             </div>
           )}
 
+          {/* Email */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1.5">
-              Username
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
+              Email aziendale
             </label>
             <input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              placeholder="admin"
+              id="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setFieldErrors((p) => ({ ...p, email: false })); setError(""); }}
+              placeholder="esempio@azienda.it"
+              className={fieldErrors.email ? inputErr : inputOk}
             />
+            {fieldErrors.email && (
+              <p className="mt-1.5 text-sm text-red-400 animate-fade-in">Inserisci la tua email aziendale</p>
+            )}
           </div>
 
+          {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-              placeholder="••••••"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPw ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: false })); setError(""); }}
+                placeholder="••••••••"
+                className={`${fieldErrors.password ? inputErr : inputOk} pr-14`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(!showPw)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-xl text-text-muted active:bg-white/5 transition-colors"
+                tabIndex={-1}
+                aria-label={showPw ? "Nascondi password" : "Mostra password"}
+              >
+                {showPw ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
+            {fieldErrors.password && (
+              <p className="mt-1.5 text-sm text-red-400 animate-fade-in">Inserisci la password</p>
+            )}
           </div>
 
+          {/* Submit */}
           <button
             type="submit"
-            className="w-full rounded-lg bg-accent py-2.5 text-sm font-semibold text-black transition-colors hover:bg-accent-hover"
+            disabled={submitting}
+            className="mt-2 w-full rounded-2xl bg-accent py-4 text-base font-bold text-white min-h-[56px] active:bg-accent-hover active:scale-[0.98] transition-all disabled:opacity-70 disabled:active:scale-100 flex items-center justify-center gap-2"
           >
-            Accedi
+            {submitting ? (
+              <>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span>Accesso in corso...</span>
+              </>
+            ) : (
+              "Accedi"
+            )}
           </button>
-
-          <div className="text-xs text-text-muted text-center pt-2 border-t border-border">
-            Demo: <strong>admin</strong> / admin oppure <strong>staff</strong> / staff
-          </div>
         </form>
+
+        {/* ── Credenziali demo ── */}
+        <div className="mt-6 rounded-2xl border border-border bg-card-bg p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Account demo</p>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-text-muted">Admin</span>
+              <span className="font-mono text-foreground text-xs">admin@azienda.it / Admin2024</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-text-muted">Staff</span>
+              <span className="font-mono text-foreground text-xs">dipendente@azienda.it / Staff2024</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <p className="mt-8 text-center text-sm text-text-muted">
+          Problemi di accesso? Contatta l&apos;amministratore.
+        </p>
       </div>
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   ICONS
+   ═══════════════════════════════════════════ */
+
+function EyeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+    </svg>
+  );
+}
+
+function EyeOffIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12c1.292 4.338 5.31 7.5 10.066 7.5 1.798 0 3.483-.456 4.95-1.266M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+    </svg>
   );
 }
