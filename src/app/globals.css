@@ -10,6 +10,13 @@
   --accent-hover: #2563eb;
   --accent-muted: rgba(59, 130, 246, 0.1);
   --text-muted: #71717a;
+  --accent-warm: #f59e0b;
+  --accent-warm-muted: rgba(245, 158, 11, 0.1);
+}
+
+@theme inline {
+  --color-accent-warm: var(--accent-warm);
+  --color-accent-warm-muted: var(--accent-warm-muted);
 }
 
 @theme inline {
