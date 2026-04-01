@@ -209,6 +209,235 @@ const SEDE_COLORS: Record<Sede, string> = {
    ═══════════════════════════════════════════ */
 
 export default function DipendentiPage() {
+  const [mainTab, setMainTab] = useState<"dipendenti" | "google">("dipendenti");
+
+  return (
+    <div>
+      {/* ── Main Tabs ── */}
+      <div className="mb-6 flex gap-2">
+        <button
+          onClick={() => setMainTab("dipendenti")}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${mainTab === "dipendenti" ? "bg-accent text-white" : "text-text-muted hover:bg-white/5"}`}
+        >
+          Dipendenti Attivi
+        </button>
+        <button
+          onClick={() => setMainTab("google")}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${mainTab === "google" ? "bg-accent text-white" : "text-text-muted hover:bg-white/5"}`}
+        >
+          Accessi Google
+        </button>
+      </div>
+
+      {mainTab === "dipendenti" ? <TabDipendenti /> : <TabGoogle />}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   TAB GOOGLE WHITELIST
+   ═══════════════════════════════════════════ */
+
+interface WhitelistEntry {
+  id: number;
+  email: string;
+  nome: string | null;
+  cognome: string | null;
+  tipoContratto: string;
+  oreSettimanali: number;
+  creataAt: string;
+  utilizzata: boolean;
+}
+
+function TabGoogle() {
+  const [entries, setEntries] = useState<WhitelistEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ email: "", nome: "", cognome: "", tipoContratto: "Fisso", oreSettimanali: 40 });
+  const [addError, setAddError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  const fetchList = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/whitelist");
+      if (res.ok) setEntries(await res.json());
+    } catch { /* */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchList(); }, [fetchList]);
+
+  async function handleAdd() {
+    setAddError("");
+    if (!addForm.email || !addForm.nome || !addForm.cognome) {
+      setAddError("Tutti i campi sono obbligatori");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addForm.email)) {
+      setAddError("Formato email non valido");
+      return;
+    }
+    const res = await fetch("/api/admin/whitelist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(addForm),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      setAddError(err.error || "Errore");
+      return;
+    }
+    setShowAdd(false);
+    setAddForm({ email: "", nome: "", cognome: "", tipoContratto: "Fisso", oreSettimanali: 40 });
+    setSuccessMsg("Accesso Google configurato. Il dipendente potrà accedere con il suo account Google.");
+    setTimeout(() => setSuccessMsg(""), 5000);
+    fetchList();
+  }
+
+  async function handleDelete(id: number) {
+    const res = await fetch(`/api/admin/whitelist/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error || "Errore");
+      return;
+    }
+    fetchList();
+  }
+
+  const selectCls = "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer";
+  const inputCls = "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>;
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Accessi Google</h1>
+          <p className="mt-1 text-sm text-text-muted">Gestisci le email autorizzate per il login con Google</p>
+        </div>
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">
+          <PlusIcon className="h-4 w-4" />
+          Aggiungi Accesso Google
+        </button>
+      </div>
+
+      {successMsg && (
+        <div className="mb-4 rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-2.5 text-sm text-green-400 font-medium">
+          {successMsg}
+        </div>
+      )}
+
+      {/* Nota informativa */}
+      <div className="mb-4 rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-300/80 leading-relaxed">
+        Aggiungi le email Google dei dipendenti. Al primo accesso con Google, il loro account verrà creato automaticamente con il tipo contratto e le ore configurate qui.
+      </div>
+
+      <div className="rounded-xl border border-border bg-card-bg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-muted">
+                <th className="px-5 py-3 font-medium">Email Google</th>
+                <th className="px-5 py-3 font-medium">Nome</th>
+                <th className="px-5 py-3 font-medium">Contratto</th>
+                <th className="px-5 py-3 font-medium">Stato</th>
+                <th className="px-5 py-3 font-medium text-center">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.length === 0 && (
+                <tr><td colSpan={5} className="px-5 py-12 text-center text-sm text-text-muted">Nessun accesso Google configurato.</td></tr>
+              )}
+              {entries.map((e) => (
+                <tr key={e.id} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
+                  <td className="px-5 py-3.5 text-sm font-medium text-foreground">{e.email}</td>
+                  <td className="px-5 py-3.5 text-sm text-text-muted">{e.nome ?? ""} {e.cognome ?? ""}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${contrattoStyle(e.tipoContratto as TipoContratto)}`}>
+                      {e.tipoContratto}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${e.utilizzata ? "bg-green-500/10 text-green-400" : "bg-amber-500/10 text-amber-400"}`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${e.utilizzata ? "bg-green-400" : "bg-amber-400"}`} />
+                      {e.utilizzata ? "Attivo" : "In attesa"}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-center">
+                    {!e.utilizzata && (
+                      <button onClick={() => handleDelete(e.id)} className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-red-400 transition-colors" title="Rimuovi">
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ═══ MODALE AGGIUNGI ═══ */}
+      {showAdd && (
+        <ModalOverlay onClose={() => setShowAdd(false)}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card-bg shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h2 className="text-lg font-semibold text-foreground">Aggiungi Accesso Google</h2>
+              <button onClick={() => setShowAdd(false)} className="text-text-muted hover:text-foreground"><XIcon className="h-5 w-5" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              {addError && (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm text-red-400">{addError}</div>
+              )}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Email Google</label>
+                <input type="email" value={addForm.email} onChange={(e) => setAddForm({ ...addForm, email: e.target.value })} placeholder="nome@gmail.com" className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">Nome</label>
+                  <input type="text" value={addForm.nome} onChange={(e) => setAddForm({ ...addForm, nome: e.target.value })} placeholder="Mario" className={inputCls} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">Cognome</label>
+                  <input type="text" value={addForm.cognome} onChange={(e) => setAddForm({ ...addForm, cognome: e.target.value })} placeholder="Rossi" className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">Tipo contratto</label>
+                  <select value={addForm.tipoContratto} onChange={(e) => setAddForm({ ...addForm, tipoContratto: e.target.value })} className={selectCls}>
+                    <option value="Fisso">Dipendente Fisso</option>
+                    <option value="Part-time">Part-time</option>
+                    <option value="A chiamata">A Chiamata</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">Ore settimanali</label>
+                  <input type="number" value={addForm.oreSettimanali} onChange={(e) => setAddForm({ ...addForm, oreSettimanali: parseInt(e.target.value) || 0 })} className={inputCls} />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+              <button onClick={() => setShowAdd(false)} className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground transition-colors">Annulla</button>
+              <button onClick={handleAdd} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">Aggiungi</button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   TAB DIPENDENTI
+   ═══════════════════════════════════════════ */
+
+function TabDipendenti() {
   const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
   const [dbLoading, setDbLoading] = useState(true);
   const [search, setSearch] = useState("");
