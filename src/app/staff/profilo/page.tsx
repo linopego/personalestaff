@@ -1,34 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 /* ═══════════════════════════════════════════
-   MOCK DATA
+   TYPES
    ═══════════════════════════════════════════ */
 
-const DIPENDENTE = {
-  nome: "Laura",
-  cognome: "Rossi",
-  email: "l.rossi@presenzestaff.it",
-  telefono: "347 2345678",
-  contratto: "Fisso" as const,
-  oreSettimanali: 40,
-  sede: "La Casa dei Gelsi",
-  dataAssunzione: "2020-06-01",
-  attivo: true,
-  oreSett: 32.5,
-  oreMese: 128.5,
-  giorniMese: 16,
-};
-
-const OGGI = new Date(2026, 3, 1); // 1 Apr 2026
+interface MeData {
+  id: number;
+  nome: string;
+  cognome: string;
+  email: string;
+  telefono: string | null;
+  ruolo: string;
+  tipoContratto: string;
+  oreSettimanali: number;
+  dataAssunzione: string | null;
+  attivo: boolean;
+  riepilogo: {
+    oreSett: number;
+    oreMese: number;
+    giorniMese: number;
+  };
+}
 
 /* ═══════════════════════════════════════════
    HELPERS
    ═══════════════════════════════════════════ */
 
 const MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+
+const OGGI = new Date();
 
 function contrattoLabel(c: string) {
   switch (c) {
@@ -92,19 +95,46 @@ function fmtOreMin(ore: number) {
 
 export default function ProfiloPage() {
   const { logout } = useAuth();
-  const d = DIPENDENTE;
-  const fullName = `${d.nome} ${d.cognome}`;
-  const initials = `${d.nome[0]}${d.cognome[0]}`;
+
+  const [meData, setMeData] = useState<MeData | null>(null);
+  const [loadingMe, setLoadingMe] = useState(true);
 
   const [notifiche, setNotifiche] = useState(true);
   const [temaScuro, setTemaScuro] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then((data) => setMeData(data))
+      .finally(() => setLoadingMe(false));
+  }, []);
+
   function handleLogout() {
     setShowLogoutModal(false);
     logout();
   }
+
+  if (loadingMe) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <SpinnerIcon className="h-8 w-8 animate-spin text-accent" />
+        <p className="text-sm text-text-muted">Caricamento profilo…</p>
+      </div>
+    );
+  }
+
+  if (!meData) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24">
+        <p className="text-sm text-text-muted">Impossibile caricare il profilo.</p>
+      </div>
+    );
+  }
+
+  const fullName = `${meData.nome} ${meData.cognome}`;
+  const initials = `${meData.nome[0]}${meData.cognome[0]}`;
 
   return (
     <div className="flex flex-col gap-5 -mx-4 sm:-mx-6">
@@ -116,13 +146,9 @@ export default function ProfiloPage() {
           </div>
           <h1 className="mt-3 text-xl font-bold text-foreground">{fullName}</h1>
           <div className="mt-2 flex items-center gap-2 flex-wrap justify-center">
-            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${contrattoStyle(d.contratto)}`}>
-              {contrattoLabel(d.contratto)}
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${contrattoStyle(meData.tipoContratto)}`}>
+              {contrattoLabel(meData.tipoContratto)}
             </span>
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-sm text-text-muted">
-            <MapPinIcon className="h-4 w-4 shrink-0" />
-            <span>{d.sede}</span>
           </div>
         </div>
       </div>
@@ -130,21 +156,27 @@ export default function ProfiloPage() {
       <div className="px-4 sm:px-6 flex flex-col gap-5">
         {/* ── Dati Personali ── */}
         <Section title="Dati Personali">
-          <InfoItem label="Email aziendale" value={d.email} />
-          <InfoItem label="Telefono" value={d.telefono} />
-          <InfoItem label="Data di assunzione" value={formatDataIta(d.dataAssunzione)} />
-          <InfoItem label="Anzianità aziendale" value={calcolaAnzianita(d.dataAssunzione)} last />
+          <InfoItem label="Email aziendale" value={meData.email} />
+          <InfoItem label="Telefono" value={meData.telefono ?? "—"} />
+          {meData.dataAssunzione && (
+            <InfoItem label="Data di assunzione" value={formatDataIta(meData.dataAssunzione)} />
+          )}
+          {meData.dataAssunzione && (
+            <InfoItem label="Anzianità aziendale" value={calcolaAnzianita(meData.dataAssunzione)} last />
+          )}
+          {!meData.dataAssunzione && (
+            <InfoItem label="Data di assunzione" value="—" last />
+          )}
         </Section>
 
         {/* ── Contratto ── */}
         <Section title="Contratto">
-          <InfoItem label="Tipo contratto" value={contrattoLabel(d.contratto)} />
-          <InfoItem label="Ore settimanali" value={`${d.oreSettimanali}h`} />
-          <InfoItem label="Sede assegnata" value={d.sede} />
+          <InfoItem label="Tipo contratto" value={contrattoLabel(meData.tipoContratto)} />
+          <InfoItem label="Ore settimanali" value={`${meData.oreSettimanali}h`} />
           <InfoItem label="Stato" last>
-            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${d.attivo ? "bg-green-500/15 text-green-400" : "bg-zinc-500/15 text-zinc-500"}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${d.attivo ? "bg-green-400" : "bg-zinc-500"}`} />
-              {d.attivo ? "Attivo" : "Non attivo"}
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${meData.attivo ? "bg-green-500/15 text-green-400" : "bg-zinc-500/15 text-zinc-500"}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${meData.attivo ? "bg-green-400" : "bg-zinc-500"}`} />
+              {meData.attivo ? "Attivo" : "Non attivo"}
             </span>
           </InfoItem>
         </Section>
@@ -152,9 +184,9 @@ export default function ProfiloPage() {
         {/* ── Riepilogo Rapido ── */}
         <Section title="Riepilogo Rapido">
           <div className="grid grid-cols-3 gap-3 py-1">
-            <QuickStat label="Ore settimana" value={fmtOreMin(d.oreSett)} />
-            <QuickStat label="Ore mese" value={fmtOreMin(d.oreMese)} />
-            <QuickStat label="Giorni mese" value={String(d.giorniMese)} />
+            <QuickStat label="Ore settimana" value={fmtOreMin(meData.riepilogo.oreSett)} />
+            <QuickStat label="Ore mese" value={fmtOreMin(meData.riepilogo.oreMese)} />
+            <QuickStat label="Giorni mese" value={String(meData.riepilogo.giorniMese)} />
           </div>
         </Section>
 
@@ -314,11 +346,11 @@ function QuickStat({ label, value }: { label: string; value: string }) {
    ICONS
    ═══════════════════════════════════════════ */
 
-function MapPinIcon({ className }: { className?: string }) {
+function SpinnerIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+    <svg className={className} fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
   );
 }
