@@ -22,8 +22,10 @@ export default function LoginPage() {
     <div className="flex h-full items-center justify-center bg-background">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-2xl font-bold text-black">
-            PS
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-accent/15 text-accent">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
           </div>
           <h1 className="text-2xl font-bold text-foreground">Presenze Staff</h1>
           <p className="mt-1 text-sm text-text-muted">Accedi al pannello di gestione</p>
