@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { verificaSede, type RisultatoGeo } from "@/lib/geo";
+import { calcolaDistanza, type RisultatoGeo, type Sede as SedeTipo } from "@/lib/geo";
 
 /* ═══════════════════════════════════════════
    TYPES
@@ -67,14 +67,39 @@ export default function TimbraPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Sedi dal DB
+  const [sediDB, setSediDB] = useState<(SedeTipo & { id: number })[]>([]);
+  useEffect(() => {
+    fetch("/api/sedi").then(r => r.json()).then((data) => {
+      setSediDB(data.map((s: Record<string, unknown>) => ({ id: s.id, nome: s.nome as string, lat: s.lat as number, lng: s.lng as number, raggio: s.raggio as number })));
+    }).catch(() => {});
+  }, []);
+
   // Geo
   const [geoStatus, setGeoStatus] = useState<GeoStatus>("loading");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [risultato, setRisultato] = useState<RisultatoGeo | null>(null);
+  const [matchedSedeId, setMatchedSedeId] = useState<number | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
 
-  // Timbrature di oggi
+  // Timbrature di oggi dal DB
   const [timbrature, setTimbrature] = useState<Timbratura[]>([]);
+  useEffect(() => {
+    const oggi = new Date().toISOString().slice(0, 10);
+    fetch(`/api/timbrature?dataInizio=${oggi}&dataFine=${oggi}`)
+      .then(r => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setTimbrature(data.map((t: Record<string, unknown>) => ({
+            tipo: t.tipo as "Entrata" | "Uscita",
+            orario: new Date(t.orario as string).toLocaleTimeString("it-IT", { hour12: false }),
+            sede: t.sedeNome as string,
+            lat: t.lat as number, lng: t.lng as number,
+            timestamp: new Date(t.orario as string).getTime(),
+          })));
+        }
+      }).catch(() => {});
+  }, []);
   const entrata = timbrature.find((t) => t.tipo === "Entrata");
   const uscita = timbrature.find((t) => t.tipo === "Uscita");
   const turnoAperto = entrata && !uscita;
@@ -95,7 +120,22 @@ export default function TimbraPage() {
       (pos) => {
         const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCoords(c);
-        setRisultato(verificaSede(c.lat, c.lng));
+        // Usa sedi dal DB se disponibili, altrimenti fallback a hardcoded
+        const sediToCheck = sediDB.length > 0 ? sediDB : [
+          { id: 1, nome: "La Casa dei Gelsi", lat: 45.698997, lng: 11.770444, raggio: 100 },
+          { id: 2, nome: "Tenuta Villa Peggy's", lat: 45.672833, lng: 11.732111, raggio: 100 },
+          { id: 3, nome: "Studios Club / TooLate", lat: 45.775361, lng: 11.689500, raggio: 100 },
+        ];
+        let minDist = Infinity;
+        let closest = sediToCheck[0];
+        let matchSede: typeof closest | null = null;
+        for (const sede of sediToCheck) {
+          const d = calcolaDistanza(c.lat, c.lng, sede.lat, sede.lng);
+          if (d < minDist) { minDist = d; closest = sede; }
+          if (d <= sede.raggio && !matchSede) matchSede = sede;
+        }
+        setRisultato({ inSede: !!matchSede, sede: matchSede, distanza: Math.round(minDist), sedeVicina: closest });
+        setMatchedSedeId(matchSede?.id ?? null);
         setGeoStatus("ready");
         setGeoLoading(false);
       },
@@ -110,23 +150,42 @@ export default function TimbraPage() {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  }, []);
+  }, [sediDB]);
 
   useEffect(() => { rilevaPos(); }, [rilevaPos]);
 
   /* ── Conferma timbratura ── */
-  function confermaTimbra() {
-    if (!risultato?.inSede || !risultato.sede || !coords) return;
+  async function confermaTimbra() {
+    if (!risultato?.inSede || !risultato.sede || !coords || !matchedSedeId) return;
     const tipo = turnoAperto ? "Uscita" : "Entrata";
-    const t: Timbratura = {
-      tipo,
-      orario: formatOra(new Date()),
-      sede: risultato.sede.nome,
-      lat: coords.lat,
-      lng: coords.lng,
-      timestamp: Date.now(),
-    };
-    setTimbrature((prev) => [...prev, t]);
+
+    try {
+      const res = await fetch("/api/timbrature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sedeId: matchedSedeId, tipo, lat: coords.lat, lng: coords.lng }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Errore durante la timbratura");
+        setShowModal(false);
+        return;
+      }
+
+      const t: Timbratura = {
+        tipo,
+        orario: formatOra(new Date()),
+        sede: risultato.sede.nome,
+        lat: coords.lat,
+        lng: coords.lng,
+        timestamp: Date.now(),
+      };
+      setTimbrature((prev) => [...prev, t]);
+    } catch {
+      alert("Errore di connessione. Riprova.");
+    }
+
     setShowModal(false);
     setShowSuccess(true);
     if (successTimeout.current) clearTimeout(successTimeout.current);

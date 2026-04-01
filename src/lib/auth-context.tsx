@@ -3,68 +3,79 @@
 import {
   createContext,
   useContext,
-  useEffect,
-  useState,
-  useCallback,
 } from "react";
-import { useRouter } from "next/navigation";
 import {
-  type User,
-  getUser,
-  login as authLogin,
-  logout as authLogout,
-} from "./auth";
+  SessionProvider,
+  useSession,
+  signIn as nextAuthSignIn,
+  signOut as nextAuthSignOut,
+} from "next-auth/react";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  ruolo: string;
+  tipoContratto: string;
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => User | null;
+  login: (email: string, password: string) => Promise<User | null>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  login: () => null,
+  login: async () => null,
   logout: () => {},
 });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+function AuthContextInner({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    setUser(getUser());
-    setLoading(false);
-  }, []);
-
-  const login = useCallback(
-    (username: string, password: string) => {
-      const u = authLogin(username, password);
-      if (u) {
-        setUser(u);
-        if (u.role === "admin") {
-          router.push("/admin");
-        } else {
-          router.push("/staff");
-        }
+  const user: User | null = session?.user
+    ? {
+        id: (session.user as { id?: string }).id ?? "",
+        name: session.user.name ?? "",
+        email: session.user.email ?? "",
+        ruolo: (session.user as { ruolo?: string }).ruolo ?? "staff",
+        tipoContratto: (session.user as { tipoContratto?: string }).tipoContratto ?? "Fisso",
       }
-      return u;
-    },
-    [router]
-  );
+    : null;
 
-  const logout = useCallback(() => {
-    authLogout();
-    setUser(null);
-    router.push("/login");
-  }, [router]);
+  async function login(email: string, password: string): Promise<User | null> {
+    const res = await nextAuthSignIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+    if (res?.ok) {
+      // Reload to pick up fresh session from server
+      window.location.reload();
+      return {} as User;
+    }
+    return null;
+  }
+
+  function logout() {
+    nextAuthSignOut({ callbackUrl: "/login" });
+  }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading: status === "loading", login, logout }}>
       {children}
     </AuthContext.Provider>
+  );
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthContextInner>{children}</AuthContextInner>
+    </SessionProvider>
   );
 }
 

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const { user, loading, login } = useAuth();
+  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,15 +15,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: boolean; password?: boolean }>({});
 
-  // Se già autenticato, redirect
-  useEffect(() => {
-    if (!loading && user) {
-      // Il redirect avviene tramite auth-context dopo login
-    }
-  }, [loading, user]);
-
-  // Se l'utente è già loggato, non mostrare il form
+  // Se l'utente è già loggato, redirect
   if (!loading && user) {
+    router.push(user.ruolo === "admin" ? "/admin" : "/staff/timbra");
     return (
       <div className="flex h-full items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
@@ -29,7 +25,7 @@ export default function LoginPage() {
     );
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setFieldErrors({});
@@ -45,15 +41,16 @@ export default function LoginPage() {
 
     setSubmitting(true);
 
-    // Simula latenza rete
-    setTimeout(() => {
-      const result = login(email.trim(), password);
+    try {
+      const result = await login(email.trim(), password);
       if (!result) {
         setError("Credenziali non corrette. Riprova.");
         setSubmitting(false);
       }
-      // Se login ok, il redirect avviene tramite auth-context
-    }, 800);
+    } catch {
+      setError("Errore di connessione. Riprova.");
+      setSubmitting(false);
+    }
   }
 
   const inputBase =
