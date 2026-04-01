@@ -17,12 +17,11 @@ interface Dipendente {
   telefono: string;
   ruolo: string;
   contratto: TipoContratto;
-  sede: Sede;
   oreSettimanali: number;
   dataAssunzione: string;
   attivo: boolean;
   oreMese: number;
-  timbrature: { data: string; tipo: "Entrata" | "Uscita"; orario: string }[];
+  timbrature: { data: string; tipo: "Entrata" | "Uscita"; orario: string; sede: Sede }[];
   oreSett: number[];
 }
 
@@ -30,7 +29,6 @@ interface Dipendente {
    MOCK DATA
    ═══════════════════════════════════════════ */
 
-const SEDI: Sede[] = ["La Casa dei Gelsi", "Tenuta Villa Peggy's", "Studios Club / TooLate"];
 const CONTRATTI: TipoContratto[] = ["Fisso", "Part-time", "A chiamata"];
 
 const AVATAR_COLORS = [
@@ -47,111 +45,131 @@ const AVATAR_COLORS = [
 const initialDipendenti: Dipendente[] = [
   {
     id: 1, nome: "Marco", cognome: "Bianchi", email: "m.bianchi@presenzestaff.it", telefono: "339 1234567",
-    ruolo: "Responsabile sala", contratto: "Fisso", sede: "La Casa dei Gelsi", oreSettimanali: 40,
+    ruolo: "Responsabile sala", contratto: "Fisso", oreSettimanali: 40,
     dataAssunzione: "2019-03-15", attivo: true, oreMese: 162,
     timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "08:02" }, { data: "01/04", tipo: "Uscita", orario: "16:05" },
-      { data: "31/03", tipo: "Entrata", orario: "07:58" }, { data: "31/03", tipo: "Uscita", orario: "16:10" },
-      { data: "30/03", tipo: "Entrata", orario: "08:00" },
+      { data: "01/04", tipo: "Entrata", orario: "08:02", sede: "La Casa dei Gelsi" },
+      { data: "01/04", tipo: "Uscita", orario: "16:05", sede: "La Casa dei Gelsi" },
+      { data: "31/03", tipo: "Entrata", orario: "07:58", sede: "Tenuta Villa Peggy's" },
+      { data: "31/03", tipo: "Uscita", orario: "16:10", sede: "Tenuta Villa Peggy's" },
+      { data: "30/03", tipo: "Entrata", orario: "08:00", sede: "La Casa dei Gelsi" },
     ],
     oreSett: [40, 38, 41, 39, 40],
   },
   {
     id: 2, nome: "Giulia", cognome: "Ferretti", email: "g.ferretti@presenzestaff.it", telefono: "347 2345678",
-    ruolo: "Barista", contratto: "Fisso", sede: "Tenuta Villa Peggy's", oreSettimanali: 40,
+    ruolo: "Barista", contratto: "Fisso", oreSettimanali: 40,
     dataAssunzione: "2020-06-01", attivo: true, oreMese: 158,
     timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "09:00" }, { data: "01/04", tipo: "Uscita", orario: "17:02" },
-      { data: "31/03", tipo: "Entrata", orario: "08:55" }, { data: "31/03", tipo: "Uscita", orario: "17:00" },
-      { data: "30/03", tipo: "Entrata", orario: "09:05" },
+      { data: "01/04", tipo: "Entrata", orario: "09:00", sede: "Tenuta Villa Peggy's" },
+      { data: "01/04", tipo: "Uscita", orario: "17:02", sede: "Tenuta Villa Peggy's" },
+      { data: "31/03", tipo: "Entrata", orario: "08:55", sede: "La Casa dei Gelsi" },
+      { data: "31/03", tipo: "Uscita", orario: "17:00", sede: "La Casa dei Gelsi" },
+      { data: "30/03", tipo: "Entrata", orario: "09:05", sede: "Studios Club / TooLate" },
     ],
     oreSett: [38, 40, 39, 40, 38],
   },
   {
     id: 3, nome: "Alessandro", cognome: "Conti", email: "a.conti@presenzestaff.it", telefono: "333 3456789",
-    ruolo: "Cameriere", contratto: "Part-time", sede: "Studios Club / TooLate", oreSettimanali: 24,
+    ruolo: "Cameriere", contratto: "Part-time", oreSettimanali: 24,
     dataAssunzione: "2022-01-10", attivo: true, oreMese: 96,
     timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "18:00" }, { data: "01/04", tipo: "Uscita", orario: "00:05" },
-      { data: "30/03", tipo: "Entrata", orario: "18:00" }, { data: "30/03", tipo: "Uscita", orario: "00:10" },
-      { data: "29/03", tipo: "Entrata", orario: "18:05" },
+      { data: "01/04", tipo: "Entrata", orario: "18:00", sede: "Studios Club / TooLate" },
+      { data: "01/04", tipo: "Uscita", orario: "00:05", sede: "Studios Club / TooLate" },
+      { data: "30/03", tipo: "Entrata", orario: "18:00", sede: "Studios Club / TooLate" },
+      { data: "30/03", tipo: "Uscita", orario: "00:10", sede: "Studios Club / TooLate" },
+      { data: "29/03", tipo: "Entrata", orario: "18:05", sede: "Tenuta Villa Peggy's" },
     ],
     oreSett: [24, 22, 24, 20, 24],
   },
   {
     id: 4, nome: "Francesca", cognome: "Romano", email: "f.romano@presenzestaff.it", telefono: "340 4567890",
-    ruolo: "Cuoca", contratto: "Fisso", sede: "La Casa dei Gelsi", oreSettimanali: 40,
+    ruolo: "Cuoca", contratto: "Fisso", oreSettimanali: 40,
     dataAssunzione: "2018-09-20", attivo: true, oreMese: 168,
     timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "06:30" }, { data: "01/04", tipo: "Uscita", orario: "14:35" },
-      { data: "31/03", tipo: "Entrata", orario: "06:28" }, { data: "31/03", tipo: "Uscita", orario: "14:30" },
-      { data: "30/03", tipo: "Entrata", orario: "06:32" },
+      { data: "01/04", tipo: "Entrata", orario: "06:30", sede: "La Casa dei Gelsi" },
+      { data: "01/04", tipo: "Uscita", orario: "14:35", sede: "La Casa dei Gelsi" },
+      { data: "31/03", tipo: "Entrata", orario: "06:28", sede: "Tenuta Villa Peggy's" },
+      { data: "31/03", tipo: "Uscita", orario: "14:30", sede: "Tenuta Villa Peggy's" },
+      { data: "30/03", tipo: "Entrata", orario: "06:32", sede: "La Casa dei Gelsi" },
     ],
     oreSett: [42, 40, 41, 40, 42],
   },
   {
     id: 5, nome: "Luca", cognome: "Moretti", email: "l.moretti@presenzestaff.it", telefono: "328 5678901",
-    ruolo: "DJ / Fonico", contratto: "A chiamata", sede: "Studios Club / TooLate", oreSettimanali: 0,
+    ruolo: "DJ / Fonico", contratto: "A chiamata", oreSettimanali: 0,
     dataAssunzione: "2023-04-01", attivo: true, oreMese: 48,
     timbrature: [
-      { data: "30/03", tipo: "Entrata", orario: "22:00" }, { data: "31/03", tipo: "Uscita", orario: "04:00" },
-      { data: "29/03", tipo: "Entrata", orario: "22:30" }, { data: "30/03", tipo: "Uscita", orario: "04:15" },
-      { data: "23/03", tipo: "Entrata", orario: "22:00" },
+      { data: "30/03", tipo: "Entrata", orario: "22:00", sede: "Studios Club / TooLate" },
+      { data: "31/03", tipo: "Uscita", orario: "04:00", sede: "Studios Club / TooLate" },
+      { data: "29/03", tipo: "Entrata", orario: "22:30", sede: "Studios Club / TooLate" },
+      { data: "30/03", tipo: "Uscita", orario: "04:15", sede: "Studios Club / TooLate" },
+      { data: "23/03", tipo: "Entrata", orario: "22:00", sede: "Tenuta Villa Peggy's" },
     ],
     oreSett: [12, 0, 12, 6, 12],
   },
   {
     id: 6, nome: "Sara", cognome: "Colombo", email: "s.colombo@presenzestaff.it", telefono: "349 6789012",
-    ruolo: "Cameriera", contratto: "Part-time", sede: "Tenuta Villa Peggy's", oreSettimanali: 20,
+    ruolo: "Cameriera", contratto: "Part-time", oreSettimanali: 20,
     dataAssunzione: "2023-09-15", attivo: true, oreMese: 80,
     timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "11:00" }, { data: "01/04", tipo: "Uscita", orario: "15:00" },
-      { data: "31/03", tipo: "Entrata", orario: "11:05" }, { data: "31/03", tipo: "Uscita", orario: "15:02" },
-      { data: "30/03", tipo: "Entrata", orario: "11:00" },
+      { data: "01/04", tipo: "Entrata", orario: "11:00", sede: "Tenuta Villa Peggy's" },
+      { data: "01/04", tipo: "Uscita", orario: "15:00", sede: "Tenuta Villa Peggy's" },
+      { data: "31/03", tipo: "Entrata", orario: "11:05", sede: "La Casa dei Gelsi" },
+      { data: "31/03", tipo: "Uscita", orario: "15:02", sede: "La Casa dei Gelsi" },
+      { data: "30/03", tipo: "Entrata", orario: "11:00", sede: "Tenuta Villa Peggy's" },
     ],
     oreSett: [20, 18, 20, 20, 16],
   },
   {
     id: 7, nome: "Davide", cognome: "Ricci", email: "d.ricci@presenzestaff.it", telefono: "335 7890123",
-    ruolo: "Barman", contratto: "A chiamata", sede: "La Casa dei Gelsi", oreSettimanali: 0,
+    ruolo: "Barman", contratto: "A chiamata", oreSettimanali: 0,
     dataAssunzione: "2024-01-20", attivo: false, oreMese: 0,
     timbrature: [
-      { data: "15/02", tipo: "Entrata", orario: "19:00" }, { data: "15/02", tipo: "Uscita", orario: "01:00" },
-      { data: "14/02", tipo: "Entrata", orario: "19:00" }, { data: "14/02", tipo: "Uscita", orario: "01:05" },
-      { data: "10/02", tipo: "Entrata", orario: "19:30" },
+      { data: "15/02", tipo: "Entrata", orario: "19:00", sede: "La Casa dei Gelsi" },
+      { data: "15/02", tipo: "Uscita", orario: "01:00", sede: "La Casa dei Gelsi" },
+      { data: "14/02", tipo: "Entrata", orario: "19:00", sede: "Studios Club / TooLate" },
+      { data: "14/02", tipo: "Uscita", orario: "01:05", sede: "Studios Club / TooLate" },
+      { data: "10/02", tipo: "Entrata", orario: "19:30", sede: "Tenuta Villa Peggy's" },
     ],
     oreSett: [0, 0, 0, 0, 0],
   },
   {
     id: 8, nome: "Elena", cognome: "Galli", email: "e.galli@presenzestaff.it", telefono: "320 8901234",
-    ruolo: "Responsabile bar", contratto: "Fisso", sede: "Studios Club / TooLate", oreSettimanali: 36,
+    ruolo: "Responsabile bar", contratto: "Fisso", oreSettimanali: 36,
     dataAssunzione: "2021-11-01", attivo: true, oreMese: 144,
     timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "20:00" }, { data: "02/04", tipo: "Uscita", orario: "02:10" },
-      { data: "31/03", tipo: "Entrata", orario: "20:00" }, { data: "01/04", tipo: "Uscita", orario: "02:00" },
-      { data: "29/03", tipo: "Entrata", orario: "20:05" },
+      { data: "01/04", tipo: "Entrata", orario: "20:00", sede: "Studios Club / TooLate" },
+      { data: "02/04", tipo: "Uscita", orario: "02:10", sede: "Studios Club / TooLate" },
+      { data: "31/03", tipo: "Entrata", orario: "20:00", sede: "Studios Club / TooLate" },
+      { data: "01/04", tipo: "Uscita", orario: "02:00", sede: "Studios Club / TooLate" },
+      { data: "29/03", tipo: "Entrata", orario: "20:05", sede: "La Casa dei Gelsi" },
     ],
     oreSett: [36, 34, 36, 36, 30],
   },
   {
     id: 9, nome: "Andrea", cognome: "Marino", email: "a.marino@presenzestaff.it", telefono: "338 9012345",
-    ruolo: "Aiuto cuoco", contratto: "Part-time", sede: "La Casa dei Gelsi", oreSettimanali: 24,
+    ruolo: "Aiuto cuoco", contratto: "Part-time", oreSettimanali: 24,
     dataAssunzione: "2024-06-10", attivo: true, oreMese: 92,
     timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "10:00" }, { data: "01/04", tipo: "Uscita", orario: "16:00" },
-      { data: "31/03", tipo: "Entrata", orario: "10:05" }, { data: "31/03", tipo: "Uscita", orario: "16:00" },
-      { data: "30/03", tipo: "Entrata", orario: "10:00" },
+      { data: "01/04", tipo: "Entrata", orario: "10:00", sede: "La Casa dei Gelsi" },
+      { data: "01/04", tipo: "Uscita", orario: "16:00", sede: "La Casa dei Gelsi" },
+      { data: "31/03", tipo: "Entrata", orario: "10:05", sede: "Tenuta Villa Peggy's" },
+      { data: "31/03", tipo: "Uscita", orario: "16:00", sede: "Tenuta Villa Peggy's" },
+      { data: "30/03", tipo: "Entrata", orario: "10:00", sede: "La Casa dei Gelsi" },
     ],
     oreSett: [24, 22, 24, 24, 18],
   },
   {
     id: 10, nome: "Chiara", cognome: "Greco", email: "c.greco@presenzestaff.it", telefono: "342 0123456",
-    ruolo: "Hostess", contratto: "A chiamata", sede: "Tenuta Villa Peggy's", oreSettimanali: 0,
+    ruolo: "Hostess", contratto: "A chiamata", oreSettimanali: 0,
     dataAssunzione: "2025-02-01", attivo: true, oreMese: 32,
     timbrature: [
-      { data: "30/03", tipo: "Entrata", orario: "18:30" }, { data: "30/03", tipo: "Uscita", orario: "00:30" },
-      { data: "29/03", tipo: "Entrata", orario: "18:00" }, { data: "29/03", tipo: "Uscita", orario: "00:00" },
-      { data: "23/03", tipo: "Entrata", orario: "18:30" },
+      { data: "30/03", tipo: "Entrata", orario: "18:30", sede: "Tenuta Villa Peggy's" },
+      { data: "30/03", tipo: "Uscita", orario: "00:30", sede: "Tenuta Villa Peggy's" },
+      { data: "29/03", tipo: "Entrata", orario: "18:00", sede: "Studios Club / TooLate" },
+      { data: "29/03", tipo: "Uscita", orario: "00:00", sede: "Studios Club / TooLate" },
+      { data: "23/03", tipo: "Entrata", orario: "18:30", sede: "La Casa dei Gelsi" },
     ],
     oreSett: [12, 6, 6, 0, 12],
   },
@@ -175,10 +193,16 @@ function contrattoStyle(c: TipoContratto) {
 function emptyForm(): Omit<Dipendente, "id" | "oreMese" | "timbrature" | "oreSett"> {
   return {
     nome: "", cognome: "", email: "", telefono: "", ruolo: "",
-    contratto: "Fisso", sede: "La Casa dei Gelsi", oreSettimanali: 40,
+    contratto: "Fisso", oreSettimanali: 40,
     dataAssunzione: "", attivo: true,
   };
 }
+
+const SEDE_COLORS: Record<Sede, string> = {
+  "La Casa dei Gelsi": "text-blue-400",
+  "Tenuta Villa Peggy's": "text-amber-400",
+  "Studios Club / TooLate": "text-emerald-400",
+};
 
 /* ═══════════════════════════════════════════
    COMPONENT
@@ -187,7 +211,6 @@ function emptyForm(): Omit<Dipendente, "id" | "oreMese" | "timbrature" | "oreSet
 export default function DipendentiPage() {
   const [dipendenti, setDipendenti] = useState(initialDipendenti);
   const [search, setSearch] = useState("");
-  const [filtroSede, setFiltroSede] = useState<string>("");
   const [filtroContratto, setFiltroContratto] = useState<string>("");
 
   // Modals
@@ -203,11 +226,10 @@ export default function DipendentiPage() {
     return dipendenti.filter((d) => {
       const q = search.toLowerCase();
       const matchSearch = !q || d.nome.toLowerCase().includes(q) || d.cognome.toLowerCase().includes(q);
-      const matchSede = !filtroSede || d.sede === filtroSede;
       const matchContratto = !filtroContratto || d.contratto === filtroContratto;
-      return matchSearch && matchSede && matchContratto;
+      return matchSearch && matchContratto;
     });
-  }, [dipendenti, search, filtroSede, filtroContratto]);
+  }, [dipendenti, search, filtroContratto]);
 
   /* ── Form handlers ── */
   function openAdd() {
@@ -220,7 +242,7 @@ export default function DipendentiPage() {
     setEditingId(d.id);
     setForm({
       nome: d.nome, cognome: d.cognome, email: d.email, telefono: d.telefono,
-      ruolo: d.ruolo, contratto: d.contratto, sede: d.sede,
+      ruolo: d.ruolo, contratto: d.contratto,
       oreSettimanali: d.oreSettimanali, dataAssunzione: d.dataAssunzione, attivo: d.attivo,
     });
     setFormOpen(true);
@@ -247,6 +269,12 @@ export default function DipendentiPage() {
       prev.map((x) => (x.id === d.id ? { ...x, attivo: !x.attivo } : x))
     );
     setConfirmDisable(null);
+  }
+
+  /* ── Ultima sede timbrata ── */
+  function ultimaSede(d: Dipendente): Sede | null {
+    if (d.timbrature.length === 0) return null;
+    return d.timbrature[0].sede;
   }
 
   /* ── Select styling ── */
@@ -284,12 +312,6 @@ export default function DipendentiPage() {
             className={`${inputCls} pl-9`}
           />
         </div>
-        <select value={filtroSede} onChange={(e) => setFiltroSede(e.target.value)} className={selectCls}>
-          <option value="">Tutte le sedi</option>
-          {SEDI.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
         <select value={filtroContratto} onChange={(e) => setFiltroContratto(e.target.value)} className={selectCls}>
           <option value="">Tutti i contratti</option>
           {CONTRATTI.map((c) => (
@@ -307,55 +329,64 @@ export default function DipendentiPage() {
                 <th className="px-5 py-3 font-medium">Dipendente</th>
                 <th className="px-5 py-3 font-medium">Ruolo</th>
                 <th className="px-5 py-3 font-medium">Contratto</th>
-                <th className="px-5 py-3 font-medium">Sede</th>
+                <th className="px-5 py-3 font-medium">Ultima sede</th>
                 <th className="px-5 py-3 font-medium">Stato</th>
                 <th className="px-5 py-3 font-medium text-right">Ore mese</th>
                 <th className="px-5 py-3 font-medium text-center">Azioni</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((d, i) => (
-                <tr key={d.id} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
-                        {d.nome[0]}{d.cognome[0]}
+              {filtered.map((d, i) => {
+                const sede = ultimaSede(d);
+                return (
+                  <tr key={d.id} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${AVATAR_COLORS[i % AVATAR_COLORS.length]}`}>
+                          {d.nome[0]}{d.cognome[0]}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{d.nome} {d.cognome}</p>
+                          <p className="text-xs text-text-muted">{d.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{d.nome} {d.cognome}</p>
-                        <p className="text-xs text-text-muted">{d.email}</p>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-text-muted">{d.ruolo}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${contrattoStyle(d.contratto)}`}>
+                        {d.contratto}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {sede ? (
+                        <span className={`text-sm font-medium ${SEDE_COLORS[sede]}`}>{sede}</span>
+                      ) : (
+                        <span className="text-sm text-text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${d.attivo ? "bg-green-500/10 text-green-400" : "bg-zinc-500/10 text-zinc-500"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${d.attivo ? "bg-green-400" : "bg-zinc-500"}`} />
+                        {d.attivo ? "Attivo" : "Disattivato"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-sm font-mono text-foreground">{d.oreMese}h</td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={() => setDetailDip(d)} className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-blue-400 transition-colors" title="Dettaglio">
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => openEdit(d)} className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-amber-400 transition-colors" title="Modifica">
+                          <PenIcon className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => setConfirmDisable(d)} className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-red-400 transition-colors" title={d.attivo ? "Disattiva" : "Riattiva"}>
+                          <PowerIcon className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-text-muted">{d.ruolo}</td>
-                  <td className="px-5 py-3.5">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${contrattoStyle(d.contratto)}`}>
-                      {d.contratto}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-sm text-text-muted">{d.sede}</td>
-                  <td className="px-5 py-3.5">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${d.attivo ? "bg-green-500/10 text-green-400" : "bg-zinc-500/10 text-zinc-500"}`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${d.attivo ? "bg-green-400" : "bg-zinc-500"}`} />
-                      {d.attivo ? "Attivo" : "Disattivato"}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right text-sm font-mono text-foreground">{d.oreMese}h</td>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => setDetailDip(d)} className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-blue-400 transition-colors" title="Dettaglio">
-                        <EyeIcon className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => openEdit(d)} className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-amber-400 transition-colors" title="Modifica">
-                        <PenIcon className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => setConfirmDisable(d)} className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-red-400 transition-colors" title={d.attivo ? "Disattiva" : "Riattiva"}>
-                        <PowerIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-sm text-text-muted">
@@ -401,18 +432,6 @@ export default function DipendentiPage() {
                     {CONTRATTI.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Sede</label>
-                  <select
-                    value={form.sede}
-                    onChange={(e) => setForm({ ...form, sede: e.target.value as Sede })}
-                    className={`${selectCls} w-full`}
-                  >
-                    {SEDI.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <Field
                   label="Ore settimanali"
                   value={String(form.oreSettimanali)}
@@ -420,13 +439,13 @@ export default function DipendentiPage() {
                   type="number"
                   placeholder="40"
                 />
-                <Field
-                  label="Data assunzione"
-                  value={form.dataAssunzione}
-                  onChange={(v) => setForm({ ...form, dataAssunzione: v })}
-                  type="date"
-                />
               </div>
+              <Field
+                label="Data assunzione"
+                value={form.dataAssunzione}
+                onChange={(v) => setForm({ ...form, dataAssunzione: v })}
+                type="date"
+              />
               <div className="flex items-center gap-3">
                 <label className="text-sm font-medium text-foreground">Stato</label>
                 <button
@@ -469,7 +488,7 @@ export default function DipendentiPage() {
                 </div>
                 <div>
                   <p className="text-lg font-semibold text-foreground">{detailDip.nome} {detailDip.cognome}</p>
-                  <p className="text-sm text-text-muted">{detailDip.ruolo} — {detailDip.sede}</p>
+                  <p className="text-sm text-text-muted">{detailDip.ruolo}</p>
                 </div>
               </div>
 
@@ -504,13 +523,14 @@ export default function DipendentiPage() {
                 </div>
               </div>
 
-              {/* Ultime 5 timbrature */}
+              {/* Ultime 5 timbrature con sede */}
               <div>
                 <h3 className="mb-2 text-sm font-semibold text-foreground">Ultime 5 timbrature</h3>
                 <div className="space-y-1.5">
                   {detailDip.timbrature.map((t, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-lg bg-sidebar-bg px-3 py-2 text-sm">
+                    <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-sidebar-bg px-3 py-2 text-sm">
                       <span className="text-text-muted">{t.data}</span>
+                      <span className={`text-xs font-medium ${SEDE_COLORS[t.sede]}`}>{t.sede}</span>
                       <span className={`inline-flex items-center gap-1 text-xs font-medium ${t.tipo === "Entrata" ? "text-green-400" : "text-red-400"}`}>
                         {t.tipo === "Entrata" ? "↓" : "↑"} {t.tipo}
                       </span>
