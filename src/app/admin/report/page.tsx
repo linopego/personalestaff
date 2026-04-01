@@ -364,7 +364,7 @@ export default function ReportPage() {
                 <Tooltip content={<ChartTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="effettive" name="Ore effettive" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="contrattuali" name="Ore contrattuali" fill="#2a2d3e" stroke="#71717a" strokeWidth={1} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="contrattuali" name="Ore contrattuali" fill="#f59e0b" opacity={0.4} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -427,7 +427,7 @@ export default function ReportPage() {
                                 <td className="px-4 py-2.5 text-sm font-medium text-foreground">{d.nome}</td>
                                 <td className="px-3 py-2.5 text-xs text-text-muted">{d.sede ?? "—"}</td>
                                 <td className="px-3 py-2.5 text-right text-sm font-mono font-semibold text-foreground">{d.oreTotMese}h</td>
-                                <td className="px-3 py-2.5 text-right text-sm font-mono text-text-muted">{d.oreContrMese > 0 ? `${d.oreContrMese}h` : "—"}</td>
+                                <td className="px-3 py-2.5 text-right text-sm font-mono text-amber-400">{d.oreContrMese > 0 ? `${d.oreContrMese}h` : "—"}</td>
                                 <td className={`px-3 py-2.5 text-right text-sm font-mono font-semibold ${diffColor(d.diff)}`}>{diffLabel(d.diff)}</td>
                                 <td className="px-3 py-2.5 text-right text-sm font-mono text-foreground">{d.giorniLav}</td>
                                 <td className="px-3 py-2.5 text-right text-sm font-mono text-foreground">{d.media}h</td>
