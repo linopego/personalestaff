@@ -316,7 +316,6 @@ export default function ReportPage() {
                   <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-muted">
                     <th className="px-4 py-3 font-medium sticky left-0 bg-card-bg z-10">Dipendente</th>
                     <th className="px-3 py-3 font-medium">Contratto</th>
-                    <th className="px-3 py-3 font-medium">Sede</th>
                     {GIORNI.map((g) => <th key={g} className="px-3 py-3 font-medium text-center w-16">{g}</th>)}
                     <th className="px-3 py-3 font-medium text-right">Totale</th>
                     <th className="px-3 py-3 font-medium text-right">Diff.</th>
@@ -329,7 +328,6 @@ export default function ReportPage() {
                       <td className="px-3 py-2.5">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${contrattoStyle(d.contratto)}`}>{d.contratto}</span>
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-text-muted whitespace-nowrap">{d.sede ?? "—"}</td>
                       {d.ore.map((h, i) => (
                         <td key={i} className="px-3 py-2.5 text-center text-sm font-mono">
                           {h > 0 ? <span className="text-foreground">{h}</span> : <span className="text-text-muted/40">—</span>}
@@ -341,7 +339,7 @@ export default function ReportPage() {
                   ))}
                   {/* Totals row */}
                   <tr className="border-t-2 border-border bg-white/[0.03]">
-                    <td className="px-4 py-2.5 text-sm font-bold text-foreground sticky left-0 bg-card-bg" colSpan={3}>Totale giornaliero</td>
+                    <td className="px-4 py-2.5 text-sm font-bold text-foreground sticky left-0 bg-card-bg" colSpan={2}>Totale giornaliero</td>
                     {weekTotals.tots.map((t, i) => (
                       <td key={i} className="px-3 py-2.5 text-center text-sm font-mono font-bold text-accent">{t > 0 ? t : "—"}</td>
                     ))}
@@ -413,7 +411,6 @@ export default function ReportPage() {
                           <thead>
                             <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-muted">
                               <th className="px-4 py-3 font-medium">Dipendente</th>
-                              <th className="px-3 py-3 font-medium">Sede freq.</th>
                               <th className="px-3 py-3 font-medium text-right">Ore mese</th>
                               <th className="px-3 py-3 font-medium text-right">Ore contr.</th>
                               <th className="px-3 py-3 font-medium text-right">Diff.</th>
@@ -425,7 +422,6 @@ export default function ReportPage() {
                             {dips.map((d) => (
                               <tr key={d.nome} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
                                 <td className="px-4 py-2.5 text-sm font-medium text-foreground">{d.nome}</td>
-                                <td className="px-3 py-2.5 text-xs text-text-muted">{d.sede ?? "—"}</td>
                                 <td className="px-3 py-2.5 text-right text-sm font-mono font-semibold text-foreground">{d.oreTotMese}h</td>
                                 <td className="px-3 py-2.5 text-right text-sm font-mono text-amber-400">{d.oreContrMese > 0 ? `${d.oreContrMese}h` : "—"}</td>
                                 <td className={`px-3 py-2.5 text-right text-sm font-mono font-semibold ${diffColor(d.diff)}`}>{diffLabel(d.diff)}</td>
