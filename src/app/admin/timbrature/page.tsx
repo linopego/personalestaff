@@ -1,18 +1,35 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 /* ═══════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════ */
 
-type Sede = "La Casa dei Gelsi" | "Tenuta Villa Peggy's" | "Studios Club / TooLate";
 type TipoTimbro = "Entrata" | "Uscita";
+
+interface ApiTimbratura {
+  id: number;
+  userId: number;
+  sedeId: number;
+  tipo: TipoTimbro;
+  orario: string;           // ISO string
+  lat: number;
+  lng: number;
+  modificataManualmente: boolean;
+  noteModifica: string | null;
+  modifiedBy: number | null;
+  dipNome: string;
+  dipCognome: string;
+  sedeNome: string;
+}
 
 interface Timbratura {
   id: number;
+  userId: number;
+  sedeId: number;
   dipendente: string;
-  sede: Sede;
+  sede: string;
   data: string;          // YYYY-MM-DD
   orario: string;        // HH:mm
   tipo: TipoTimbro;
@@ -28,89 +45,60 @@ interface TurnoCalcolato {
   oreTurno: number | null;
 }
 
+interface Dipendente {
+  id: number;
+  nome: string;
+  cognome: string;
+}
+
+interface Sede {
+  id: number;
+  nome: string;
+}
+
 /* ═══════════════════════════════════════════
-   MOCK DATA — 30 timbrature ultimi 14gg
+   CONSTANTS
    ═══════════════════════════════════════════ */
 
-const SEDI: Sede[] = ["La Casa dei Gelsi", "Tenuta Villa Peggy's", "Studios Club / TooLate"];
-const DIPENDENTI = [
-  "Marco Bianchi", "Giulia Ferretti", "Alessandro Conti", "Francesca Romano",
-  "Luca Moretti", "Sara Colombo", "Elena Galli", "Andrea Marino",
-  "Chiara Greco", "Davide Ricci",
-];
-
-const GPS: Record<Sede, { lat: number; lng: number }> = {
-  "La Casa dei Gelsi":       { lat: 45.5826, lng: 9.2756 },
-  "Tenuta Villa Peggy's":    { lat: 45.6012, lng: 9.3102 },
-  "Studios Club / TooLate":  { lat: 45.5543, lng: 9.2351 },
-};
-
-function gpsJitter(base: number) { return base + (Math.random() - 0.5) * 0.002; }
-function date(daysAgo: number) {
-  const d = new Date(2026, 3, 1); // 1 Aprile 2026
-  d.setDate(d.getDate() - daysAgo);
+function defaultDataInizio() {
+  const d = new Date();
+  d.setDate(d.getDate() - 13);
   return d.toISOString().slice(0, 10);
 }
 
-let _id = 0;
-function t(dip: string, sede: Sede, data: string, orario: string, tipo: TipoTimbro, mod = false, note?: string): Timbratura {
-  const g = GPS[sede];
-  return { id: ++_id, dipendente: dip, sede, data, orario, tipo, lat: gpsJitter(g.lat), lng: gpsJitter(g.lng), modificata: mod, noteCorrezione: note };
+function defaultDataFine() {
+  return new Date().toISOString().slice(0, 10);
 }
-
-const initialTimbrature: Timbratura[] = [
-  // Oggi (0 gg fa)
-  t("Marco Bianchi",     "La Casa dei Gelsi",       date(0), "08:02", "Entrata"),
-  t("Marco Bianchi",     "La Casa dei Gelsi",       date(0), "16:05", "Uscita"),
-  t("Giulia Ferretti",   "Tenuta Villa Peggy's",    date(0), "09:00", "Entrata"),
-  t("Giulia Ferretti",   "Tenuta Villa Peggy's",    date(0), "17:02", "Uscita"),
-  t("Alessandro Conti",  "Studios Club / TooLate",  date(0), "18:00", "Entrata"), // incompleto
-  t("Francesca Romano",  "La Casa dei Gelsi",       date(0), "06:30", "Entrata"),
-  t("Francesca Romano",  "La Casa dei Gelsi",       date(0), "14:35", "Uscita"),
-  // 1 giorno fa
-  t("Elena Galli",       "Studios Club / TooLate",  date(1), "20:00", "Entrata"),
-  t("Elena Galli",       "Studios Club / TooLate",  date(1), "02:10", "Uscita", true, "Uscita registrata giorno successivo, corretta manualmente"),
-  t("Sara Colombo",      "Tenuta Villa Peggy's",    date(1), "11:00", "Entrata"),
-  t("Sara Colombo",      "Tenuta Villa Peggy's",    date(1), "15:00", "Uscita"),
-  t("Andrea Marino",     "La Casa dei Gelsi",       date(1), "10:00", "Entrata"),
-  t("Andrea Marino",     "La Casa dei Gelsi",       date(1), "16:00", "Uscita"),
-  // 2 giorni fa
-  t("Luca Moretti",      "Studios Club / TooLate",  date(2), "22:00", "Entrata"),
-  t("Luca Moretti",      "Studios Club / TooLate",  date(2), "04:00", "Uscita"),
-  t("Chiara Greco",      "Tenuta Villa Peggy's",    date(2), "18:30", "Entrata"), // incompleto
-  t("Marco Bianchi",     "La Casa dei Gelsi",       date(2), "08:00", "Entrata"),
-  t("Marco Bianchi",     "La Casa dei Gelsi",       date(2), "16:10", "Uscita"),
-  // 4 giorni fa
-  t("Giulia Ferretti",   "Tenuta Villa Peggy's",    date(4), "09:05", "Entrata"),
-  t("Giulia Ferretti",   "Tenuta Villa Peggy's",    date(4), "17:00", "Uscita"),
-  t("Alessandro Conti",  "Studios Club / TooLate",  date(4), "18:00", "Entrata"),
-  t("Alessandro Conti",  "Studios Club / TooLate",  date(4), "00:05", "Uscita"),
-  // 7 giorni fa
-  t("Francesca Romano",  "La Casa dei Gelsi",       date(7), "06:28", "Entrata"),
-  t("Francesca Romano",  "La Casa dei Gelsi",       date(7), "14:30", "Uscita"),
-  t("Davide Ricci",      "La Casa dei Gelsi",       date(7), "19:00", "Entrata"), // incompleto
-  t("Elena Galli",       "Studios Club / TooLate",  date(7), "20:05", "Entrata"),
-  t("Elena Galli",       "Studios Club / TooLate",  date(7), "02:00", "Uscita"),
-  // 10 giorni fa
-  t("Sara Colombo",      "Tenuta Villa Peggy's",    date(10), "11:00", "Entrata"),
-  t("Sara Colombo",      "Tenuta Villa Peggy's",    date(10), "15:05", "Uscita"),
-  t("Andrea Marino",     "La Casa dei Gelsi",       date(10), "10:05", "Entrata"),
-  t("Andrea Marino",     "La Casa dei Gelsi",       date(10), "16:00", "Uscita"),
-  // 13 giorni fa
-  t("Luca Moretti",      "Studios Club / TooLate",  date(13), "22:30", "Entrata"),
-  t("Luca Moretti",      "Studios Club / TooLate",  date(13), "04:15", "Uscita"),
-  t("Chiara Greco",      "Tenuta Villa Peggy's",    date(13), "18:00", "Entrata"),
-  t("Chiara Greco",      "Tenuta Villa Peggy's",    date(13), "00:00", "Uscita"),
-];
 
 /* ═══════════════════════════════════════════
    HELPERS
    ═══════════════════════════════════════════ */
 
+function fromApi(r: ApiTimbratura): Timbratura {
+  const dt = new Date(r.orario);
+  const data = dt.toISOString().slice(0, 10);
+  const hh = String(dt.getHours()).padStart(2, "0");
+  const mm = String(dt.getMinutes()).padStart(2, "0");
+  return {
+    id: r.id,
+    userId: r.userId,
+    sedeId: r.sedeId,
+    dipendente: `${r.dipNome} ${r.dipCognome}`,
+    sede: r.sedeNome,
+    data,
+    orario: `${hh}:${mm}`,
+    tipo: r.tipo,
+    lat: r.lat,
+    lng: r.lng,
+    modificata: r.modificataManualmente,
+    noteCorrezione: r.noteModifica ?? undefined,
+  };
+}
+
 function parseTurni(timbrature: Timbratura[]): TurnoCalcolato[] {
   const grouped = new Map<string, Timbratura[]>();
   for (const t of timbrature) {
-    const key = `${t.dipendente}|${t.data}`;
+    const key = `${t.userId}|${t.data}`;
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(t);
   }
@@ -179,11 +167,16 @@ function downloadCSV(turni: TurnoCalcolato[]) {
    ═══════════════════════════════════════════ */
 
 export default function TimbraturePage() {
-  const [timbrature, setTimbrature] = useState(initialTimbrature);
+  // Data
+  const [timbrature, setTimbrature] = useState<Timbratura[]>([]);
+  const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
+  const [sedi, setSedi] = useState<Sede[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   // Filtri
-  const [dataInizio, setDataInizio] = useState(date(13));
-  const [dataFine, setDataFine] = useState(date(0));
+  const [dataInizio, setDataInizio] = useState(defaultDataInizio);
+  const [dataFine, setDataFine] = useState(defaultDataFine);
   const [filtroDip, setFiltroDip] = useState("");
   const [filtroSede, setFiltroSede] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<"" | "Entrata" | "Uscita" | "incompleti">("");
@@ -192,21 +185,40 @@ export default function TimbraturePage() {
   const [editTurno, setEditTurno] = useState<TurnoCalcolato | null>(null);
   const [editOraEnt, setEditOraEnt] = useState("");
   const [editOraUsc, setEditOraUsc] = useState("");
-  const [editSede, setEditSede] = useState<Sede>("La Casa dei Gelsi");
+  const [editSedeId, setEditSedeId] = useState<number | "">("");
   const [editNote, setEditNote] = useState("");
   const [editError, setEditError] = useState("");
 
-  /* ── Turni calcolati ── */
-  const filteredTimbrature = useMemo(() => {
-    return timbrature.filter((t) => {
-      if (t.data < dataInizio || t.data > dataFine) return false;
-      if (filtroDip && t.dipendente !== filtroDip) return false;
-      if (filtroSede && t.sede !== filtroSede) return false;
-      return true;
+  /* ── Fetch dipendenti + sedi on mount ── */
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/dipendenti").then((r) => r.json()),
+      fetch("/api/sedi").then((r) => r.json()),
+    ]).then(([dips, sediData]) => {
+      setDipendenti(dips);
+      setSedi(sediData);
     });
-  }, [timbrature, dataInizio, dataFine, filtroDip, filtroSede]);
+  }, []);
 
-  const turni = useMemo(() => parseTurni(filteredTimbrature), [filteredTimbrature]);
+  /* ── Fetch timbrature when filters change ── */
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (dataInizio) params.set("dataInizio", dataInizio);
+    if (dataFine) params.set("dataFine", dataFine);
+    if (filtroDip) params.set("userId", filtroDip);
+    if (filtroSede) params.set("sedeId", filtroSede);
+
+    fetch(`/api/timbrature?${params.toString()}`)
+      .then((r) => r.json())
+      .then((data: ApiTimbratura[]) => {
+        setTimbrature(data.map(fromApi));
+      })
+      .finally(() => setLoading(false));
+  }, [dataInizio, dataFine, filtroDip, filtroSede]);
+
+  /* ── Turni calcolati ── */
+  const turni = useMemo(() => parseTurni(timbrature), [timbrature]);
 
   const turniVisualizzati = useMemo(() => {
     if (!filtroTipo) return turni;
@@ -231,38 +243,60 @@ export default function TimbraturePage() {
     setEditTurno(turno);
     setEditOraEnt(turno.entrata.orario);
     setEditOraUsc(turno.uscita?.orario ?? "");
-    setEditSede(turno.entrata.sede);
+    setEditSedeId(turno.entrata.sedeId);
     setEditNote("");
     setEditError("");
   }, []);
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!editNote.trim()) { setEditError("Le note sono obbligatorie per le correzioni manuali."); return; }
     if (!editTurno) return;
-    setTimbrature((prev) => {
-      const next = [...prev];
-      const eidx = next.findIndex((t) => t.id === editTurno.entrata.id);
-      if (eidx !== -1) {
-        next[eidx] = { ...next[eidx], orario: editOraEnt, sede: editSede, modificata: true, noteCorrezione: editNote };
+
+    setSaving(true);
+    try {
+      // Update entrata
+      const entData = {
+        noteModifica: editNote.trim(),
+        orario: `${editTurno.entrata.data}T${editOraEnt}:00`,
+        ...(editSedeId !== "" ? { sedeId: editSedeId } : {}),
+      };
+      const entRes = await fetch(`/api/timbrature/${editTurno.entrata.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entData),
+      });
+      if (!entRes.ok) {
+        const err = await entRes.json();
+        setEditError(err.error ?? "Errore durante il salvataggio.");
+        return;
       }
-      if (editTurno.uscita) {
-        const uidx = next.findIndex((t) => t.id === editTurno.uscita!.id);
-        if (uidx !== -1) {
-          next[uidx] = { ...next[uidx], orario: editOraUsc, sede: editSede, modificata: true, noteCorrezione: editNote };
-        }
-      } else if (editOraUsc) {
-        // Aggiungi uscita mancante
-        const newId = Math.max(...next.map((t) => t.id)) + 1;
-        const g = GPS[editSede];
-        next.push({
-          id: newId, dipendente: editTurno.entrata.dipendente, sede: editSede,
-          data: editTurno.entrata.data, orario: editOraUsc, tipo: "Uscita",
-          lat: gpsJitter(g.lat), lng: gpsJitter(g.lng), modificata: true, noteCorrezione: editNote,
+
+      // Update uscita if present, or skip adding (API does not support creating new records via PUT)
+      if (editTurno.uscita && editOraUsc) {
+        const uscData = {
+          noteModifica: editNote.trim(),
+          orario: `${editTurno.uscita.data}T${editOraUsc}:00`,
+          ...(editSedeId !== "" ? { sedeId: editSedeId } : {}),
+        };
+        await fetch(`/api/timbrature/${editTurno.uscita.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(uscData),
         });
       }
-      return next;
-    });
-    setEditTurno(null);
+
+      // Refresh data
+      const params = new URLSearchParams();
+      if (dataInizio) params.set("dataInizio", dataInizio);
+      if (dataFine) params.set("dataFine", dataFine);
+      if (filtroDip) params.set("userId", filtroDip);
+      if (filtroSede) params.set("sedeId", filtroSede);
+      const fresh = await fetch(`/api/timbrature?${params.toString()}`).then((r) => r.json());
+      setTimbrature((fresh as ApiTimbratura[]).map(fromApi));
+      setEditTurno(null);
+    } finally {
+      setSaving(false);
+    }
   }
 
   const selectCls = "rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer";
@@ -295,11 +329,15 @@ export default function TimbraturePage() {
         </div>
         <select value={filtroDip} onChange={(e) => setFiltroDip(e.target.value)} className={selectCls}>
           <option value="">Tutti i dipendenti</option>
-          {DIPENDENTI.map((d) => <option key={d} value={d}>{d}</option>)}
+          {dipendenti.map((d) => (
+            <option key={d.id} value={String(d.id)}>{d.nome} {d.cognome}</option>
+          ))}
         </select>
         <select value={filtroSede} onChange={(e) => setFiltroSede(e.target.value)} className={selectCls}>
           <option value="">Tutte le sedi</option>
-          {SEDI.map((s) => <option key={s} value={s}>{s}</option>)}
+          {sedi.map((s) => (
+            <option key={s.id} value={String(s.id)}>{s.nome}</option>
+          ))}
         </select>
         <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as typeof filtroTipo)} className={selectCls}>
           <option value="">Tutti i tipi</option>
@@ -311,100 +349,106 @@ export default function TimbraturePage() {
 
       {/* ── Tabella ── */}
       <div className="rounded-xl border border-border bg-card-bg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-muted">
-                <th className="px-5 py-3 font-medium">Data / Ora</th>
-                <th className="px-5 py-3 font-medium">Dipendente</th>
-                <th className="px-5 py-3 font-medium">Sede</th>
-                <th className="px-5 py-3 font-medium">Tipo</th>
-                <th className="px-5 py-3 font-medium">GPS</th>
-                <th className="px-5 py-3 font-medium text-right">Ore turno</th>
-                <th className="px-5 py-3 font-medium text-center">Azioni</th>
-              </tr>
-            </thead>
-            <tbody>
-              {turniVisualizzati.map((turno) => {
-                const inc = !turno.uscita;
-                const mod = turno.entrata.modificata || (turno.uscita?.modificata ?? false);
-                return (
-                  <tr
-                    key={turno.entrata.id}
-                    className={`border-b border-border last:border-0 transition-colors ${
-                      inc ? "bg-red-500/[0.04] hover:bg-red-500/[0.08]" : "hover:bg-white/[0.02]"
-                    }`}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="text-sm font-medium text-foreground">{formatDate(turno.entrata.data)}</div>
-                      <div className="text-xs text-text-muted font-mono">
-                        {turno.entrata.orario} → {turno.uscita?.orario ?? <span className="text-red-400">--:--</span>}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">
-                          {turno.entrata.dipendente.split(" ").map((n) => n[0]).join("")}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <SpinnerIcon className="h-8 w-8 animate-spin text-accent" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-muted">
+                  <th className="px-5 py-3 font-medium">Data / Ora</th>
+                  <th className="px-5 py-3 font-medium">Dipendente</th>
+                  <th className="px-5 py-3 font-medium">Sede</th>
+                  <th className="px-5 py-3 font-medium">Tipo</th>
+                  <th className="px-5 py-3 font-medium">GPS</th>
+                  <th className="px-5 py-3 font-medium text-right">Ore turno</th>
+                  <th className="px-5 py-3 font-medium text-center">Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {turniVisualizzati.map((turno) => {
+                  const inc = !turno.uscita;
+                  const mod = turno.entrata.modificata || (turno.uscita?.modificata ?? false);
+                  return (
+                    <tr
+                      key={turno.entrata.id}
+                      className={`border-b border-border last:border-0 transition-colors ${
+                        inc ? "bg-red-500/[0.04] hover:bg-red-500/[0.08]" : "hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      <td className="px-5 py-3.5">
+                        <div className="text-sm font-medium text-foreground">{formatDate(turno.entrata.data)}</div>
+                        <div className="text-xs text-text-muted font-mono">
+                          {turno.entrata.orario} → {turno.uscita?.orario ?? <span className="text-red-400">--:--</span>}
                         </div>
-                        <span className="text-sm font-medium text-foreground">{turno.entrata.dipendente}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-sm text-text-muted">{turno.entrata.sede}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex flex-col gap-1">
-                        <span className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-500/10 text-green-400">
-                          ↓ Entrata
-                        </span>
-                        {turno.uscita ? (
-                          <span className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-400">
-                            ↑ Uscita
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">
+                            {turno.entrata.dipendente.split(" ").map((n) => n[0]).join("")}
+                          </div>
+                          <span className="text-sm font-medium text-foreground">{turno.entrata.dipendente}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-sm text-text-muted">{turno.entrata.sede}</td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-500/10 text-green-400">
+                            ↓ Entrata
                           </span>
+                          {turno.uscita ? (
+                            <span className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-400">
+                              ↑ Uscita
+                            </span>
+                          ) : (
+                            <span className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-400">
+                              ⚠ Incompleto
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs font-mono text-text-muted">{formatGps(turno.entrata.lat, turno.entrata.lng)}</span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        {turno.oreTurno != null ? (
+                          <span className="text-sm font-mono font-semibold text-foreground">{turno.oreTurno.toFixed(1)}h</span>
                         ) : (
-                          <span className="inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-red-500/10 text-red-400">
-                            ⚠ Incompleto
-                          </span>
+                          <span className="text-sm text-red-400 font-medium">—</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-xs font-mono text-text-muted">{formatGps(turno.entrata.lat, turno.entrata.lng)}</span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      {turno.oreTurno != null ? (
-                        <span className="text-sm font-mono font-semibold text-foreground">{turno.oreTurno.toFixed(1)}h</span>
-                      ) : (
-                        <span className="text-sm text-red-400 font-medium">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {mod && (
-                          <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400" title={turno.entrata.noteCorrezione || turno.uscita?.noteCorrezione}>
-                            MOD
-                          </span>
-                        )}
-                        <button
-                          onClick={() => openEdit(turno)}
-                          className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-amber-400 transition-colors"
-                          title="Correggi timbratura"
-                        >
-                          <PenIcon className="h-4 w-4" />
-                        </button>
-                      </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {mod && (
+                            <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400" title={turno.entrata.noteCorrezione || turno.uscita?.noteCorrezione}>
+                              MOD
+                            </span>
+                          )}
+                          <button
+                            onClick={() => openEdit(turno)}
+                            className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-amber-400 transition-colors"
+                            title="Correggi timbratura"
+                          >
+                            <PenIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {turniVisualizzati.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-12 text-center text-sm text-text-muted">
+                      Nessuna timbratura trovata per il periodo e i filtri selezionati.
                     </td>
                   </tr>
-                );
-              })}
-              {turniVisualizzati.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-text-muted">
-                    Nessuna timbratura trovata per il periodo e i filtri selezionati.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ── Riepilogo ── */}
@@ -466,8 +510,8 @@ export default function TimbraturePage() {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-foreground">Sede</label>
-                <select value={editSede} onChange={(e) => setEditSede(e.target.value as Sede)} className={`${selectCls} w-full`}>
-                  {SEDI.map((s) => <option key={s} value={s}>{s}</option>)}
+                <select value={editSedeId} onChange={(e) => setEditSedeId(Number(e.target.value))} className={`${selectCls} w-full`}>
+                  {sedi.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
                 </select>
               </div>
 
@@ -489,7 +533,8 @@ export default function TimbraturePage() {
               <button onClick={() => setEditTurno(null)} className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground transition-colors">
                 Annulla
               </button>
-              <button onClick={saveEdit} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">
+              <button onClick={saveEdit} disabled={saving} className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors disabled:opacity-60">
+                {saving && <SpinnerIcon className="h-4 w-4 animate-spin" />}
                 Salva correzione
               </button>
             </div>
@@ -538,6 +583,15 @@ function XIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   );
 }
