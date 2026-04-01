@@ -109,6 +109,32 @@ export default function TimbraPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const successTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
+  // Stato errore geo per messaggi specifici
+  const [geoError, setGeoError] = useState<string | null>(null);
+
+  /* ── Processa coordinate ── */
+  const processCoords = useCallback((c: { lat: number; lng: number }) => {
+    setCoords(c);
+    const sediToCheck = sediDB.length > 0 ? sediDB : [
+      { id: 1, nome: "La Casa dei Gelsi", lat: 45.698997, lng: 11.770444, raggio: 100 },
+      { id: 2, nome: "Tenuta Villa Peggy's", lat: 45.672833, lng: 11.732111, raggio: 100 },
+      { id: 3, nome: "Studios Club / TooLate", lat: 45.775361, lng: 11.689500, raggio: 100 },
+    ];
+    let minDist = Infinity;
+    let closest = sediToCheck[0];
+    let matchSede: typeof closest | null = null;
+    for (const sede of sediToCheck) {
+      const d = calcolaDistanza(c.lat, c.lng, sede.lat, sede.lng);
+      if (d < minDist) { minDist = d; closest = sede; }
+      if (d <= sede.raggio && !matchSede) matchSede = sede;
+    }
+    setRisultato({ inSede: !!matchSede, sede: matchSede, distanza: Math.round(minDist), sedeVicina: closest });
+    setMatchedSedeId(matchSede?.id ?? null);
+    setGeoStatus("ready");
+    setGeoLoading(false);
+    setGeoError(null);
+  }, [sediDB]);
+
   /* ── Rileva posizione ── */
   const rilevaPos = useCallback(() => {
     if (!navigator.geolocation) {
@@ -116,41 +142,38 @@ export default function TimbraPage() {
       return;
     }
     setGeoLoading(true);
+    setGeoError(null);
+
+    // Primo tentativo: alta precisione
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setCoords(c);
-        // Usa sedi dal DB se disponibili, altrimenti fallback a hardcoded
-        const sediToCheck = sediDB.length > 0 ? sediDB : [
-          { id: 1, nome: "La Casa dei Gelsi", lat: 45.698997, lng: 11.770444, raggio: 100 },
-          { id: 2, nome: "Tenuta Villa Peggy's", lat: 45.672833, lng: 11.732111, raggio: 100 },
-          { id: 3, nome: "Studios Club / TooLate", lat: 45.775361, lng: 11.689500, raggio: 100 },
-        ];
-        let minDist = Infinity;
-        let closest = sediToCheck[0];
-        let matchSede: typeof closest | null = null;
-        for (const sede of sediToCheck) {
-          const d = calcolaDistanza(c.lat, c.lng, sede.lat, sede.lng);
-          if (d < minDist) { minDist = d; closest = sede; }
-          if (d <= sede.raggio && !matchSede) matchSede = sede;
-        }
-        setRisultato({ inSede: !!matchSede, sede: matchSede, distanza: Math.round(minDist), sedeVicina: closest });
-        setMatchedSedeId(matchSede?.id ?? null);
-        setGeoStatus("ready");
-        setGeoLoading(false);
-      },
+      (pos) => processCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
           setGeoStatus("denied");
-        } else {
-          // Timeout o errore generico — riprova o mostra denied
-          setGeoStatus("denied");
+          setGeoLoading(false);
+          return;
         }
-        setGeoLoading(false);
+        // Timeout o errore → retry senza alta precisione (più veloce su iOS)
+        navigator.geolocation.getCurrentPosition(
+          (pos) => processCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          (err2) => {
+            if (err2.code === err2.PERMISSION_DENIED) {
+              setGeoStatus("denied");
+            } else if (err2.code === err2.TIMEOUT) {
+              setGeoStatus("denied");
+              setGeoError("Il GPS non ha risposto in tempo. Assicurati di essere all'aperto o vicino a una finestra e riprova.");
+            } else {
+              setGeoStatus("denied");
+              setGeoError("Impossibile rilevare la posizione. Riprova tra qualche secondo.");
+            }
+            setGeoLoading(false);
+          },
+          { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [sediDB]);
+  }, [sediDB, processCoords]);
 
   useEffect(() => { rilevaPos(); }, [rilevaPos]);
 
@@ -207,7 +230,7 @@ export default function TimbraPage() {
       {/* ── Area Geo ── */}
       {geoStatus === "loading" && <GeoLoading />}
       {geoStatus === "unsupported" && <GeoUnsupported />}
-      {geoStatus === "denied" && <GeoDenied onRetry={rilevaPos} />}
+      {geoStatus === "denied" && <GeoDenied onRetry={rilevaPos} errorMsg={geoError} />}
       {geoStatus === "ready" && risultato && !risultato.inSede && (
         <GeoFuoriSede risultato={risultato} turnoCompleto={!!(entrata && uscita)} />
       )}
@@ -370,15 +393,17 @@ function GeoUnsupported() {
   );
 }
 
-function GeoDenied({ onRetry }: { onRetry: () => void }) {
+function GeoDenied({ onRetry, errorMsg }: { onRetry: () => void; errorMsg?: string | null }) {
   return (
     <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-6">
       <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/15">
         <MapPinOffIcon className="h-8 w-8 text-amber-400" />
       </div>
-      <p className="text-lg font-bold text-amber-400 text-center">Permesso posizione negato</p>
+      <p className="text-lg font-bold text-amber-400 text-center">
+        {errorMsg ? "Posizione non disponibile" : "Permesso posizione negato"}
+      </p>
       <p className="mt-2 text-sm text-text-muted text-center">
-        Per timbrare devi autorizzare l&apos;accesso alla tua posizione.
+        {errorMsg ?? "Per timbrare devi autorizzare l'accesso alla tua posizione."}
       </p>
 
       <div className="mt-4 space-y-3">
