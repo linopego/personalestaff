@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { timbrature, sedi, utenti } from "@/db/schema";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { getSession, unauthorized } from "@/lib/api-auth";
+import { calcolaDistanza } from "@/lib/geo";
+
+export async function GET(req: NextRequest) {
+  const user = await getSession();
+  if (!user) return unauthorized();
+
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("userId");
+  const sedeId = searchParams.get("sedeId");
+  const dataInizio = searchParams.get("dataInizio");
+  const dataFine = searchParams.get("dataFine");
+  const tipo = searchParams.get("tipo");
+
+  const conditions = [];
+
+  // Staff vede solo le proprie
+  if (user.ruolo !== "admin") {
+    conditions.push(eq(timbrature.userId, parseInt(user.id)));
+  } else if (userId) {
+    conditions.push(eq(timbrature.userId, parseInt(userId)));
+  }
+
+  if (sedeId) conditions.push(eq(timbrature.sedeId, parseInt(sedeId)));
+  if (tipo) conditions.push(eq(timbrature.tipo, tipo));
+  if (dataInizio) conditions.push(gte(timbrature.orario, new Date(dataInizio)));
+  if (dataFine) {
+    const fine = new Date(dataFine);
+    fine.setHours(23, 59, 59, 999);
+    conditions.push(lte(timbrature.orario, fine));
+  }
+
+  const result = await db
+    .select({
+      id: timbrature.id,
+      userId: timbrature.userId,
+      sedeId: timbrature.sedeId,
+      tipo: timbrature.tipo,
+      orario: timbrature.orario,
+      lat: timbrature.lat,
+      lng: timbrature.lng,
+      modificataManualmente: timbrature.modificataManualmente,
+      noteModifica: timbrature.noteModifica,
+      modifiedBy: timbrature.modifiedBy,
+      dipNome: utenti.nome,
+      dipCognome: utenti.cognome,
+      sedeNome: sedi.nome,
+    })
+    .from(timbrature)
+    .innerJoin(utenti, eq(timbrature.userId, utenti.id))
+    .innerJoin(sedi, eq(timbrature.sedeId, sedi.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(timbrature.orario))
+    .limit(500);
+
+  return NextResponse.json(result);
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getSession();
+  if (!user) return unauthorized();
+
+  const body = await req.json();
+  const { sedeId, tipo, lat, lng } = body;
+
+  if (!sedeId || !tipo || lat == null || lng == null) {
+    return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
+  }
+
+  // Verifica che la sede esista
+  const [sede] = await db.select().from(sedi).where(eq(sedi.id, sedeId)).limit(1);
+  if (!sede) {
+    return NextResponse.json({ error: "Sede non trovata" }, { status: 404 });
+  }
+
+  // CONTROLLO GEOFENCE SERVER-SIDE
+  const distanza = calcolaDistanza(lat, lng, sede.lat, sede.lng);
+  if (distanza > sede.raggio) {
+    return NextResponse.json(
+      { error: "Posizione non autorizzata", distanza: Math.round(distanza), raggio: sede.raggio },
+      { status: 403 }
+    );
+  }
+
+  const [nuova] = await db.insert(timbrature).values({
+    userId: parseInt(user.id),
+    sedeId,
+    tipo,
+    orario: new Date(),
+    lat,
+    lng,
+  }).returning();
+
+  return NextResponse.json(nuova, { status: 201 });
+}
