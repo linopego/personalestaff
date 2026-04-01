@@ -31,11 +31,11 @@ export default function DipendentiPage() {
           </thead>
           <tbody>
             {[
-              { name: "Mario Rossi", role: "Sviluppatore", dept: "IT", sede: "Milano", status: "Attivo" },
-              { name: "Laura Bianchi", role: "Designer", dept: "Marketing", sede: "Roma", status: "In ferie" },
-              { name: "Giuseppe Verdi", role: "Project Manager", dept: "IT", sede: "Milano", status: "Attivo" },
-              { name: "Anna Neri", role: "HR Specialist", dept: "HR", sede: "Milano", status: "Malattia" },
-              { name: "Luca Ferrari", role: "Backend Dev", dept: "IT", sede: "Roma", status: "Attivo" },
+              { name: "Mario Rossi", role: "Cameriere", dept: "Sala", sede: "La Casa dei Gelsi", status: "Attivo" },
+              { name: "Laura Bianchi", role: "Barista", dept: "Bar", sede: "Tenuta Villa Peggy's", status: "In ferie" },
+              { name: "Giuseppe Verdi", role: "Responsabile sala", dept: "Sala", sede: "La Casa dei Gelsi", status: "Attivo" },
+              { name: "Anna Neri", role: "Cassiera", dept: "Cassa", sede: "Studios Club / TooLate", status: "Malattia" },
+              { name: "Luca Ferrari", role: "Barman", dept: "Bar", sede: "Studios Club / TooLate", status: "Attivo" },
             ].map((emp, i) => (
               <tr key={i} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
                 <td className="px-5 py-4">

@@ -54,17 +54,17 @@ const stats = [
 ];
 
 const SEDI_COLORS = {
-  "Milano Centro": "#3b82f6",
-  "Milano Nord": "#f59e0b",
-  Monza: "#10b981",
+  "La Casa dei Gelsi": "#3b82f6",
+  "Tenuta Villa Peggy's": "#f59e0b",
+  "Studios Club / TooLate": "#10b981",
 };
 
 const giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 const barData = giorni.map((g, i) => ({
   giorno: g,
-  "Milano Centro": [42, 45, 40, 46, 44, 12, 0][i],
-  "Milano Nord": [30, 28, 32, 29, 31, 8, 0][i],
-  Monza: [22, 24, 20, 23, 25, 6, 0][i],
+  "La Casa dei Gelsi": [42, 45, 40, 46, 44, 12, 0][i],
+  "Tenuta Villa Peggy's": [30, 28, 32, 29, 31, 8, 0][i],
+  "Studios Club / TooLate": [22, 24, 20, 23, 25, 6, 0][i],
 }));
 
 const lineData = [
@@ -75,22 +75,22 @@ const lineData = [
 ];
 
 const pieData = [
-  { name: "Milano Centro", value: 1680 },
-  { name: "Milano Nord", value: 1200 },
-  { name: "Monza", value: 962 },
+  { name: "La Casa dei Gelsi", value: 1680 },
+  { name: "Tenuta Villa Peggy's", value: 1200 },
+  { name: "Studios Club / TooLate", value: 962 },
 ];
 
 const timbrature = [
-  { dipendente: "Marco Bianchi", sede: "Milano Centro", tipo: "Entrata", orario: "08:02", turno: "8h" },
-  { dipendente: "Giulia Ferretti", sede: "Milano Nord", tipo: "Entrata", orario: "08:05", turno: "8h" },
-  { dipendente: "Alessandro Conti", sede: "Monza", tipo: "Entrata", orario: "08:10", turno: "6h" },
-  { dipendente: "Francesca Romano", sede: "Milano Centro", tipo: "Entrata", orario: "08:15", turno: "8h" },
-  { dipendente: "Luca Moretti", sede: "Milano Nord", tipo: "Uscita", orario: "08:18", turno: "8h" },
-  { dipendente: "Sara Colombo", sede: "Milano Centro", tipo: "Entrata", orario: "08:22", turno: "4h" },
-  { dipendente: "Davide Ricci", sede: "Monza", tipo: "Uscita", orario: "08:25", turno: "8h" },
-  { dipendente: "Elena Galli", sede: "Milano Nord", tipo: "Entrata", orario: "08:30", turno: "8h" },
-  { dipendente: "Andrea Marino", sede: "Milano Centro", tipo: "Entrata", orario: "08:32", turno: "6h" },
-  { dipendente: "Chiara Greco", sede: "Monza", tipo: "Entrata", orario: "08:35", turno: "8h" },
+  { dipendente: "Marco Bianchi", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:02", turno: "8h" },
+  { dipendente: "Giulia Ferretti", sede: "Tenuta Villa Peggy's", tipo: "Entrata", orario: "08:05", turno: "8h" },
+  { dipendente: "Alessandro Conti", sede: "Studios Club / TooLate", tipo: "Entrata", orario: "08:10", turno: "6h" },
+  { dipendente: "Francesca Romano", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:15", turno: "8h" },
+  { dipendente: "Luca Moretti", sede: "Tenuta Villa Peggy's", tipo: "Uscita", orario: "08:18", turno: "8h" },
+  { dipendente: "Sara Colombo", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:22", turno: "4h" },
+  { dipendente: "Davide Ricci", sede: "Studios Club / TooLate", tipo: "Uscita", orario: "08:25", turno: "8h" },
+  { dipendente: "Elena Galli", sede: "Tenuta Villa Peggy's", tipo: "Entrata", orario: "08:30", turno: "8h" },
+  { dipendente: "Andrea Marino", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:32", turno: "6h" },
+  { dipendente: "Chiara Greco", sede: "Studios Club / TooLate", tipo: "Entrata", orario: "08:35", turno: "8h" },
 ];
 
 /* ─── Tooltip custom ─── */
@@ -166,9 +166,9 @@ export default function AdminDashboard() {
               <Legend
                 wrapperStyle={{ fontSize: 12, color: "#71717a" }}
               />
-              <Bar dataKey="Milano Centro" fill={SEDI_COLORS["Milano Centro"]} radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Milano Nord" fill={SEDI_COLORS["Milano Nord"]} radius={[3, 3, 0, 0]} />
-              <Bar dataKey="Monza" fill={SEDI_COLORS["Monza"]} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="La Casa dei Gelsi" fill={SEDI_COLORS["La Casa dei Gelsi"]} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Tenuta Villa Peggy's" fill={SEDI_COLORS["Tenuta Villa Peggy's"]} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="Studios Club / TooLate" fill={SEDI_COLORS["Studios Club / TooLate"]} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
