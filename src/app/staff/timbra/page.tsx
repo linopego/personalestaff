@@ -76,7 +76,7 @@ export default function TimbraPage() {
   }, []);
 
   // Geo
-  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("loading");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [risultato, setRisultato] = useState<RisultatoGeo | null>(null);
   const [matchedSedeId, setMatchedSedeId] = useState<number | null>(null);
@@ -176,9 +176,7 @@ export default function TimbraPage() {
     );
   }, [sediDB, processCoords]);
 
-  // NON chiedere posizione automaticamente — iOS Safari blocca
-  // le richieste geo che non vengono da un gesto utente.
-  // Mostriamo un pulsante "Rileva posizione" al primo caricamento.
+  useEffect(() => { rilevaPos(); }, [rilevaPos]);
 
   /* ── Conferma timbratura ── */
   async function confermaTimbra() {
