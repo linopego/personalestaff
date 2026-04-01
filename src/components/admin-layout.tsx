@@ -19,7 +19,7 @@ export default function AdminLayout({
     if (loading) return;
     if (!user) {
       router.push("/login");
-    } else if (user.role !== "admin") {
+    } else if (user.ruolo !== "admin") {
       router.push("/staff");
     }
   }, [user, loading, router]);
@@ -32,7 +32,7 @@ export default function AdminLayout({
     );
   }
 
-  if (!user || user.role !== "admin") {
+  if (!user || user.ruolo !== "admin") {
     return null;
   }
 

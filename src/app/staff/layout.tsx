@@ -21,7 +21,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     if (loading) return;
     if (!user) {
       router.push("/login");
-    } else if (user.role === "admin") {
+    } else if (user.ruolo === "admin") {
       router.push("/admin");
     }
   }, [user, loading, router]);
@@ -34,7 +34,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!user || user.role === "admin") return null;
+  if (!user || user.ruolo === "admin") return null;
 
   return (
     <div className="flex h-full flex-col bg-background">

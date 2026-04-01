@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 
 /* ═══════════════════════════════════════════
    TYPES
@@ -209,9 +209,30 @@ const SEDE_COLORS: Record<Sede, string> = {
    ═══════════════════════════════════════════ */
 
 export default function DipendentiPage() {
-  const [dipendenti, setDipendenti] = useState(initialDipendenti);
+  const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
+  const [dbLoading, setDbLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filtroContratto, setFiltroContratto] = useState<string>("");
+
+  const fetchDipendenti = useCallback(async () => {
+    setDbLoading(true);
+    try {
+      const res = await fetch("/api/dipendenti");
+      if (res.ok) {
+        const data = await res.json();
+        setDipendenti(data.map((d: Record<string, unknown>) => ({
+          id: d.id, nome: d.nome, cognome: d.cognome, email: d.email,
+          telefono: d.telefono ?? "", ruolo: d.tipoContratto === "Fisso" ? "Dipendente" : (d.tipoContratto as string),
+          contratto: d.tipoContratto as TipoContratto, oreSettimanali: d.oreSettimanali,
+          dataAssunzione: d.dataAssunzione ?? "", attivo: d.attivo,
+          oreMese: 0, timbrature: [], oreSett: [],
+        })));
+      }
+    } catch { /* fallback: empty */ }
+    setDbLoading(false);
+  }, []);
+
+  useEffect(() => { fetchDipendenti(); }, [fetchDipendenti]);
 
   // Modals
   const [formOpen, setFormOpen] = useState(false);
@@ -248,34 +269,41 @@ export default function DipendentiPage() {
     setFormOpen(true);
   }
 
-  function saveForm() {
+  async function saveForm() {
     if (!form.nome || !form.cognome) return;
     if (editingId !== null) {
-      setDipendenti((prev) =>
-        prev.map((d) => (d.id === editingId ? { ...d, ...form } : d))
-      );
-    } else {
-      const newId = Math.max(...dipendenti.map((d) => d.id)) + 1;
-      setDipendenti((prev) => [
-        ...prev,
-        { ...form, id: newId, oreMese: 0, timbrature: [], oreSett: [0, 0, 0, 0, 0] } as Dipendente,
-      ]);
+      await fetch(`/api/dipendenti/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: form.nome, cognome: form.cognome, email: form.email,
+          telefono: form.telefono, tipoContratto: form.contratto,
+          oreSettimanali: form.oreSettimanali, dataAssunzione: form.dataAssunzione,
+          attivo: form.attivo,
+        }),
+      });
     }
+    // Nota: creazione dipendente richiede un endpoint dedicato con password — per ora solo modifica
     setFormOpen(false);
+    fetchDipendenti();
   }
 
-  function toggleAttivo(d: Dipendente) {
-    setDipendenti((prev) =>
-      prev.map((x) => (x.id === d.id ? { ...x, attivo: !x.attivo } : x))
-    );
+  async function toggleAttivo(d: Dipendente) {
+    await fetch(`/api/dipendenti/${d.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ attivo: !d.attivo }),
+    });
     setConfirmDisable(null);
+    fetchDipendenti();
   }
 
   const [confirmDelete, setConfirmDelete] = useState<Dipendente | null>(null);
 
-  function deleteDipendente(d: Dipendente) {
-    setDipendenti((prev) => prev.filter((x) => x.id !== d.id));
+  async function deleteDipendente(d: Dipendente) {
+    await fetch(`/api/dipendenti/${d.id}`, { method: "DELETE" });
     setConfirmDelete(null);
+    fetchDipendenti();
   }
 
   /* ── Ultima sede timbrata ── */
@@ -289,6 +317,14 @@ export default function DipendentiPage() {
     "rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer";
   const inputCls =
     "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+
+  if (dbLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div>
