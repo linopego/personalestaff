@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 /* ═══════════════════════════════════════════
    TYPES
@@ -21,34 +21,6 @@ interface SedeData {
   oreMese: number;
 }
 
-/* ═══════════════════════════════════════════
-   MOCK DATA
-   ═══════════════════════════════════════════ */
-
-const initialSedi: SedeData[] = [
-  {
-    id: 1, nome: "La Casa dei Gelsi",
-    indirizzo: "Via dei Gelsi 24, 36061 Bassano del Grappa (VI)",
-    lat: 45.698997, lng: 11.770444, raggio: 100,
-    note: "Sede principale — ristorante e sala eventi",
-    attiva: true, dipAssegnati: 18, dipInSede: 12, oreOggi: 72, oreMese: 1680,
-  },
-  {
-    id: 2, nome: "Tenuta Villa Peggy's",
-    indirizzo: "Via Villa Peggy 8, 36061 Bassano del Grappa (VI)",
-    lat: 45.672833, lng: 11.732111, raggio: 100,
-    note: "Location eventi e cerimonie",
-    attiva: true, dipAssegnati: 14, dipInSede: 8, oreOggi: 48, oreMese: 1200,
-  },
-  {
-    id: 3, nome: "Studios Club / TooLate",
-    indirizzo: "Viale delle Fosse 16, 36061 Bassano del Grappa (VI)",
-    lat: 45.775361, lng: 11.689500, raggio: 100,
-    note: "Club notturno — apertura serale/notturna",
-    attiva: true, dipAssegnati: 15, dipInSede: 5, oreOggi: 30, oreMese: 962,
-  },
-];
-
 const SEDE_ACCENTS = ["#3b82f6", "#f59e0b", "#10b981"];
 
 /* ═══════════════════════════════════════════
@@ -56,8 +28,40 @@ const SEDE_ACCENTS = ["#3b82f6", "#f59e0b", "#10b981"];
    ═══════════════════════════════════════════ */
 
 export default function SediPage() {
-  const [sedi, setSedi] = useState(initialSedi);
+  const [sedi, setSedi] = useState<SedeData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const fetchSedi = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [sediRes, timbRes] = await Promise.all([
+        fetch("/api/sedi"),
+        fetch(`/api/timbrature?dataInizio=${new Date().toISOString().slice(0, 10)}&dataFine=${new Date().toISOString().slice(0, 10)}`),
+      ]);
+      const sediData = sediRes.ok ? await sediRes.json() : [];
+      const timbData = timbRes.ok ? await timbRes.json() : [];
+
+      // Calcola stats per sede
+      setSedi(sediData.map((s: Record<string, unknown>) => {
+        const sedeTimb = Array.isArray(timbData) ? timbData.filter((t: Record<string, unknown>) => t.sedeNome === s.nome) : [];
+        const entrate = sedeTimb.filter((t: Record<string, unknown>) => t.tipo === "Entrata");
+        const uscite = sedeTimb.filter((t: Record<string, unknown>) => t.tipo === "Uscita");
+        const entrateIds = new Set(entrate.map((t: Record<string, unknown>) => t.userId));
+        const usciteIds = new Set(uscite.map((t: Record<string, unknown>) => t.userId));
+        const inSede = [...entrateIds].filter((id) => !usciteIds.has(id)).length;
+        return {
+          id: s.id as number, nome: s.nome as string, indirizzo: (s.indirizzo ?? "") as string,
+          lat: s.lat as number, lng: s.lng as number, raggio: s.raggio as number,
+          note: (s.note ?? "") as string, attiva: s.attiva as boolean,
+          dipAssegnati: entrateIds.size, dipInSede: inSede, oreOggi: 0, oreMese: 0,
+        };
+      }));
+    } catch { /* */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchSedi(); }, [fetchSedi]);
   const [editingNameId, setEditingNameId] = useState<number | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
 
@@ -74,9 +78,13 @@ export default function SediPage() {
     setEditNameValue(sede.nome);
   }
 
-  function saveEditName(id: number) {
+  async function saveEditName(id: number) {
     if (editNameValue.trim()) {
-      setSedi((prev) => prev.map((s) => (s.id === id ? { ...s, nome: editNameValue.trim() } : s)));
+      await fetch(`/api/sedi/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: editNameValue.trim() }),
+      });
+      fetchSedi();
     }
     setEditingNameId(null);
   }
@@ -91,15 +99,14 @@ export default function SediPage() {
     }
   }
 
-  function saveGeoFence(id: number) {
-    const r = Math.max(50, Math.min(500, geoForm.raggio));
-    setSedi((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, lat: geoForm.lat, lng: geoForm.lng, raggio: r, note: geoForm.note } : s
-      )
-    );
+  async function saveGeoFence(id: number) {
+    await fetch(`/api/sedi/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: geoForm.lat, lng: geoForm.lng, raggio: geoForm.raggio, note: geoForm.note }),
+    });
     setSavedMsg(id);
     setTimeout(() => setSavedMsg((prev) => (prev === id ? null : prev)), 3000);
+    fetchSedi();
   }
 
   // Riepilogo aziendale
@@ -110,6 +117,10 @@ export default function SediPage() {
 
   const inputCls =
     "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>;
+  }
 
   return (
     <div>

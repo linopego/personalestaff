@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -16,82 +17,258 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-/* ─── Dati mock ─── */
+/* ─── Types ─── */
 
-const stats = [
-  {
-    name: "Dipendenti attivi",
-    value: "47",
-    sub: "su 52 totali",
-    icon: UsersIcon,
-    accent: "text-blue-400",
-    bg: "bg-blue-500/10",
-  },
-  {
-    name: "Ore lavorate oggi",
-    value: "186.5",
-    sub: "+12% vs ieri",
-    icon: ClockIcon,
-    accent: "text-green-400",
-    bg: "bg-green-500/10",
-  },
-  {
-    name: "In sede adesso",
-    value: "34",
-    sub: "72% del personale",
-    icon: BuildingIcon,
-    accent: "text-amber-400",
-    bg: "bg-amber-500/10",
-  },
-  {
-    name: "Ore mese corrente",
-    value: "3.842",
-    sub: "obiettivo 5.200",
-    icon: CalendarIcon,
-    accent: "text-purple-400",
-    bg: "bg-purple-500/10",
-  },
-];
+interface Timbratura {
+  id: number;
+  userId: number;
+  sedeId: number;
+  tipo: string;
+  orario: string; // ISO string from JSON
+  lat: number;
+  lng: number;
+  dipNome: string;
+  dipCognome: string;
+  sedeNome: string;
+  modificataManualmente: boolean;
+  noteModifica: string | null;
+}
 
-const SEDI_COLORS = {
+interface Dipendente {
+  id: number;
+  nome: string;
+  cognome: string;
+  attivo: boolean;
+}
+
+interface DashboardData {
+  stats: {
+    dipendentiAttivi: number;
+    oreLavorateOggi: number;
+    inSedeAdesso: number;
+    oreMeseCorrente: number;
+  };
+  barData: { giorno: string; [sede: string]: number | string }[];
+  lineData: { settimana: string; ore: number }[];
+  pieData: { name: string; value: number }[];
+  recentTimbrature: Timbratura[];
+}
+
+/* ─── Constants ─── */
+
+const SEDI_COLORS: Record<string, string> = {
   "La Casa dei Gelsi": "#3b82f6",
   "Tenuta Villa Peggy's": "#f59e0b",
   "Studios Club / TooLate": "#10b981",
 };
 
-const giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
-const barData = giorni.map((g, i) => ({
-  giorno: g,
-  "La Casa dei Gelsi": [42, 45, 40, 46, 44, 12, 0][i],
-  "Tenuta Villa Peggy's": [30, 28, 32, 29, 31, 8, 0][i],
-  "Studios Club / TooLate": [22, 24, 20, 23, 25, 6, 0][i],
-}));
+const SEDI_NAMES = Object.keys(SEDI_COLORS);
 
-const lineData = [
-  { settimana: "Sett 1", ore: 920 },
-  { settimana: "Sett 2", ore: 985 },
-  { settimana: "Sett 3", ore: 1012 },
-  { settimana: "Sett 4", ore: 925 },
-];
+const GIORNI_LABELS = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
-const pieData = [
-  { name: "La Casa dei Gelsi", value: 1680 },
-  { name: "Tenuta Villa Peggy's", value: 1200 },
-  { name: "Studios Club / TooLate", value: 962 },
-];
+/* ─── Date helpers ─── */
 
-const timbrature = [
-  { dipendente: "Marco Bianchi", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:02", turno: "8h" },
-  { dipendente: "Giulia Ferretti", sede: "Tenuta Villa Peggy's", tipo: "Entrata", orario: "08:05", turno: "8h" },
-  { dipendente: "Alessandro Conti", sede: "Studios Club / TooLate", tipo: "Entrata", orario: "08:10", turno: "6h" },
-  { dipendente: "Francesca Romano", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:15", turno: "8h" },
-  { dipendente: "Luca Moretti", sede: "Tenuta Villa Peggy's", tipo: "Uscita", orario: "08:18", turno: "8h" },
-  { dipendente: "Sara Colombo", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:22", turno: "4h" },
-  { dipendente: "Davide Ricci", sede: "Studios Club / TooLate", tipo: "Uscita", orario: "08:25", turno: "8h" },
-  { dipendente: "Elena Galli", sede: "Tenuta Villa Peggy's", tipo: "Entrata", orario: "08:30", turno: "8h" },
-  { dipendente: "Andrea Marino", sede: "La Casa dei Gelsi", tipo: "Entrata", orario: "08:32", turno: "6h" },
-  { dipendente: "Chiara Greco", sede: "Studios Club / TooLate", tipo: "Entrata", orario: "08:35", turno: "8h" },
-];
+function toDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function endOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
+/* ─── Hour-pair calculation ─── */
+
+/**
+ * Given a list of timbrature (sorted descending by orario, as the API returns),
+ * pair each Entrata with the next Uscita for the same user+sede and return total hours.
+ */
+function calcolaOre(timbratureList: Timbratura[]): number {
+  // Group by userId
+  const byUser: Record<number, Timbratura[]> = {};
+  for (const t of timbratureList) {
+    if (!byUser[t.userId]) byUser[t.userId] = [];
+    byUser[t.userId].push(t);
+  }
+
+  let totalMs = 0;
+  for (const records of Object.values(byUser)) {
+    // Sort ascending by orario for pairing
+    const sorted = [...records].sort(
+      (a, b) => new Date(a.orario).getTime() - new Date(b.orario).getTime()
+    );
+    let entrata: Date | null = null;
+    for (const r of sorted) {
+      if (r.tipo === "Entrata") {
+        entrata = new Date(r.orario);
+      } else if (r.tipo === "Uscita" && entrata) {
+        totalMs += new Date(r.orario).getTime() - entrata.getTime();
+        entrata = null;
+      }
+    }
+  }
+  return Math.round((totalMs / 3600000) * 10) / 10;
+}
+
+/**
+ * Count employees who clocked in today but have no matching Uscita.
+ */
+function countInSedeAdesso(todayTimbrature: Timbratura[]): number {
+  const byUser: Record<number, { entrata: boolean; uscita: boolean }> = {};
+  for (const t of todayTimbrature) {
+    if (!byUser[t.userId]) byUser[t.userId] = { entrata: false, uscita: false };
+    if (t.tipo === "Entrata") byUser[t.userId].entrata = true;
+    if (t.tipo === "Uscita") byUser[t.userId].uscita = true;
+  }
+  return Object.values(byUser).filter((u) => u.entrata && !u.uscita).length;
+}
+
+/* ─── Chart data builders ─── */
+
+/**
+ * Bar chart: ore per sede per ciascuno degli ultimi 7 giorni (oggi incluso).
+ */
+function buildBarData(
+  monthlyTimbrature: Timbratura[],
+  today: Date
+): { giorno: string; [sede: string]: number | string }[] {
+  const result: { giorno: string; [sede: string]: number | string }[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dayStr = toDateString(d);
+    const label = GIORNI_LABELS[d.getDay()];
+
+    const dayTimbrature = monthlyTimbrature.filter((t) => {
+      return toDateString(new Date(t.orario)) === dayStr;
+    });
+
+    const entry: { giorno: string; [sede: string]: number | string } = {
+      giorno: label,
+    };
+
+    for (const sede of SEDI_NAMES) {
+      const sedeTimbrature = dayTimbrature.filter((t) => t.sedeNome === sede);
+      entry[sede] = calcolaOre(sedeTimbrature);
+    }
+
+    result.push(entry);
+  }
+
+  return result;
+}
+
+/**
+ * Line chart: total ore per week for the current month (up to 5 weeks).
+ */
+function buildLineData(
+  monthlyTimbrature: Timbratura[],
+  monthStart: Date
+): { settimana: string; ore: number }[] {
+  // Divide the month into ISO weeks relative to the month start
+  const weeks: { label: string; timbrature: Timbratura[] }[] = [];
+
+  // Find the Monday of the week containing monthStart
+  const firstDay = new Date(monthStart);
+  const dayOfWeek = firstDay.getDay(); // 0=Sun
+  // Adjust so week starts on Monday
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  firstDay.setDate(firstDay.getDate() + mondayOffset);
+
+  for (let w = 0; w < 5; w++) {
+    const weekStart = new Date(firstDay);
+    weekStart.setDate(weekStart.getDate() + w * 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const weekTimbrature = monthlyTimbrature.filter((t) => {
+      const d = new Date(t.orario);
+      return d >= weekStart && d <= weekEnd;
+    });
+
+    if (weekTimbrature.length > 0) {
+      weeks.push({ label: `Sett ${w + 1}`, timbrature: weekTimbrature });
+    }
+  }
+
+  // If we have no weeks from filtering, create 4 empty placeholder weeks
+  if (weeks.length === 0) {
+    return [1, 2, 3, 4].map((n) => ({ settimana: `Sett ${n}`, ore: 0 }));
+  }
+
+  return weeks.map((w) => ({
+    settimana: w.label,
+    ore: calcolaOre(w.timbrature),
+  }));
+}
+
+/**
+ * Pie chart: ore per sede this month.
+ */
+function buildPieData(
+  monthlyTimbrature: Timbratura[]
+): { name: string; value: number }[] {
+  return SEDI_NAMES.map((sede) => {
+    const sedeTimbrature = monthlyTimbrature.filter(
+      (t) => t.sedeNome === sede
+    );
+    return { name: sede, value: calcolaOre(sedeTimbrature) };
+  }).filter((entry) => entry.value > 0);
+}
+
+/* ─── Data fetching ─── */
+
+async function fetchDashboardData(): Promise<DashboardData> {
+  const today = new Date();
+  const todayStr = toDateString(today);
+  const monthStartStr = toDateString(startOfMonth(today));
+  const monthEndStr = toDateString(endOfMonth(today));
+
+  const [dipendentiRes, todayTimbRes, monthTimbRes] = await Promise.all([
+    fetch("/api/dipendenti"),
+    fetch(`/api/timbrature?dataInizio=${todayStr}&dataFine=${todayStr}`),
+    fetch(
+      `/api/timbrature?dataInizio=${monthStartStr}&dataFine=${monthEndStr}`
+    ),
+  ]);
+
+  const [dipendenti, todayTimbrature, monthlyTimbrature]: [
+    Dipendente[],
+    Timbratura[],
+    Timbratura[],
+  ] = await Promise.all([
+    dipendentiRes.json(),
+    todayTimbRes.json(),
+    monthTimbRes.json(),
+  ]);
+
+  const dipendentiAttivi = dipendenti.filter((d) => d.attivo).length;
+  const oreLavorateOggi = calcolaOre(todayTimbrature);
+  const inSedeAdesso = countInSedeAdesso(todayTimbrature);
+  const oreMeseCorrente = calcolaOre(monthlyTimbrature);
+
+  const barData = buildBarData(monthlyTimbrature, today);
+  const lineData = buildLineData(monthlyTimbrature, startOfMonth(today));
+  const pieData = buildPieData(monthlyTimbrature);
+
+  // Last 10 timbrature from today (API already returns desc by orario)
+  const recentTimbrature = todayTimbrature.slice(0, 10);
+
+  return {
+    stats: { dipendentiAttivi, oreLavorateOggi, inSedeAdesso, oreMeseCorrente },
+    barData,
+    lineData,
+    pieData,
+    recentTimbrature,
+  };
+}
 
 /* ─── Tooltip custom ─── */
 
@@ -117,21 +294,96 @@ function CustomTooltip({
   );
 }
 
+/* ─── Loading spinner ─── */
+
+function LoadingSpinner() {
+  return (
+    <div className="flex h-96 items-center justify-center">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-border border-t-accent" />
+    </div>
+  );
+}
+
 /* ─── Dashboard ─── */
 
 export default function AdminDashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData()
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p className="mt-1 text-sm text-text-muted">Caricamento…</p>
+        </div>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const { stats, barData, lineData, pieData, recentTimbrature } = data;
+
+  const now = new Date();
+  const meseAnno = now.toLocaleString("it-IT", { month: "long", year: "numeric" });
+  const meseAnnoLabel =
+    meseAnno.charAt(0).toUpperCase() + meseAnno.slice(1);
+
+  const statsCards = [
+    {
+      name: "Dipendenti attivi",
+      value: String(stats.dipendentiAttivi),
+      sub: "dipendenti attivi",
+      icon: UsersIcon,
+      accent: "text-blue-400",
+      bg: "bg-blue-500/10",
+    },
+    {
+      name: "Ore lavorate oggi",
+      value: String(stats.oreLavorateOggi),
+      sub: "ore totali oggi",
+      icon: ClockIcon,
+      accent: "text-green-400",
+      bg: "bg-green-500/10",
+    },
+    {
+      name: "In sede adesso",
+      value: String(stats.inSedeAdesso),
+      sub: "presenti in questo momento",
+      icon: BuildingIcon,
+      accent: "text-amber-400",
+      bg: "bg-amber-500/10",
+    },
+    {
+      name: "Ore mese corrente",
+      value: stats.oreMeseCorrente.toLocaleString("it-IT"),
+      sub: "ore lavorate questo mese",
+      icon: CalendarIcon,
+      accent: "text-purple-400",
+      bg: "bg-purple-500/10",
+    },
+  ];
+
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="mt-1 text-sm text-text-muted">
-          Panoramica presenze — Aprile 2026
+          Panoramica presenze — {meseAnnoLabel}
         </p>
       </div>
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
+        {statsCards.map((s) => (
           <div
             key={s.name}
             className="flex items-start gap-4 rounded-xl border border-border bg-card-bg p-5"
@@ -163,9 +415,7 @@ export default function AdminDashboard() {
               <XAxis dataKey="giorno" tick={{ fill: "#71717a", fontSize: 12 }} />
               <YAxis tick={{ fill: "#71717a", fontSize: 12 }} unit="h" />
               <Tooltip content={<CustomTooltip />} />
-              <Legend
-                wrapperStyle={{ fontSize: 12, color: "#71717a" }}
-              />
+              <Legend wrapperStyle={{ fontSize: 12, color: "#71717a" }} />
               <Bar dataKey="La Casa dei Gelsi" fill={SEDI_COLORS["La Casa dei Gelsi"]} radius={[3, 3, 0, 0]} />
               <Bar dataKey="Tenuta Villa Peggy's" fill={SEDI_COLORS["Tenuta Villa Peggy's"]} radius={[3, 3, 0, 0]} />
               <Bar dataKey="Studios Club / TooLate" fill={SEDI_COLORS["Studios Club / TooLate"]} radius={[3, 3, 0, 0]} />
@@ -280,50 +530,58 @@ export default function AdminDashboard() {
                   <th className="px-5 py-3 font-medium">Sede</th>
                   <th className="px-5 py-3 font-medium">Tipo</th>
                   <th className="px-5 py-3 font-medium">Orario</th>
-                  <th className="px-5 py-3 font-medium">Turno</th>
                 </tr>
               </thead>
               <tbody>
-                {timbrature.map((t, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-[10px] font-semibold text-accent">
-                          {t.dipendente
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+                {recentTimbrature.map((t) => {
+                  const orario = new Date(t.orario).toLocaleTimeString("it-IT", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  const nomeCompleto = `${t.dipNome} ${t.dipCognome}`;
+                  const iniziali = `${t.dipNome[0] ?? ""}${t.dipCognome[0] ?? ""}`;
+                  return (
+                    <tr
+                      key={t.id}
+                      className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors"
+                    >
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/10 text-[10px] font-semibold text-accent">
+                            {iniziali}
+                          </div>
+                          <span className="text-sm font-medium text-foreground">
+                            {nomeCompleto}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-foreground">
-                          {t.dipendente}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-text-muted">
+                        {t.sedeNome}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            t.tipo === "Entrata"
+                              ? "bg-green-500/10 text-green-400"
+                              : "bg-red-500/10 text-red-400"
+                          }`}
+                        >
+                          {t.tipo === "Entrata" ? "↓" : "↑"} {t.tipo}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 text-sm text-text-muted">
-                      {t.sede}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          t.tipo === "Entrata"
-                            ? "bg-green-500/10 text-green-400"
-                            : "bg-red-500/10 text-red-400"
-                        }`}
-                      >
-                        {t.tipo === "Entrata" ? "↓" : "↑"} {t.tipo}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-sm font-mono text-foreground">
-                      {t.orario}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-text-muted">
-                      {t.turno}
+                      </td>
+                      <td className="px-5 py-3 text-sm font-mono text-foreground">
+                        {orario}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {recentTimbrature.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-8 text-center text-sm text-text-muted">
+                      Nessuna timbratura oggi
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
