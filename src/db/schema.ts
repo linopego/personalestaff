@@ -29,15 +29,32 @@ export const utenti = pgTable("utenti", {
   nome: varchar("nome", { length: 100 }).notNull(),
   cognome: varchar("cognome", { length: 100 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }),
   telefono: varchar("telefono", { length: 30 }),
-  ruolo: varchar("ruolo", { length: 20 }).notNull().default("staff"), // "admin" | "staff"
-  tipoContratto: varchar("tipo_contratto", { length: 30 }).notNull().default("Fisso"), // "Fisso" | "Part-time" | "A chiamata"
+  ruolo: varchar("ruolo", { length: 20 }).notNull().default("staff"),
+  tipoContratto: varchar("tipo_contratto", { length: 30 }).notNull().default("Fisso"),
   oreSettimanali: integer("ore_settimanali").notNull().default(40),
   dataAssunzione: date("data_assunzione"),
   attivo: boolean("attivo").notNull().default(true),
+  googleId: text("google_id").unique(),
+  avatarUrl: text("avatar_url"),
+  metodoAccesso: varchar("metodo_accesso", { length: 10 }).notNull().default("email"), // "email" | "google"
+  emailVerified: boolean("email_verified").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/* ── Whitelist Google (email autorizzate dall'admin) ── */
+export const googleWhitelist = pgTable("google_whitelist", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  nome: varchar("nome", { length: 100 }),
+  cognome: varchar("cognome", { length: 100 }),
+  tipoContratto: varchar("tipo_contratto", { length: 30 }).notNull().default("Fisso"),
+  oreSettimanali: integer("ore_settimanali").notNull().default(40),
+  creataDa: integer("creata_da").notNull().references(() => utenti.id),
+  creataAt: timestamp("creata_at").defaultNow().notNull(),
+  utilizzata: boolean("utilizzata").notNull().default(false),
 });
 
 /* ── Timbrature ── */
