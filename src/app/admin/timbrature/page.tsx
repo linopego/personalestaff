@@ -11,23 +11,25 @@ type TipoTimbro = "Entrata" | "Uscita";
 interface ApiTimbratura {
   id: number;
   userId: number;
-  sedeId: number;
+  sedeId: number | null;
   tipo: TipoTimbro;
-  orario: string;           // ISO string
+  orario: string;
   lat: number;
   lng: number;
   modificataManualmente: boolean;
   noteModifica: string | null;
   modifiedBy: number | null;
+  tipoAccesso: string;
+  motivoRemoto: string | null;
   dipNome: string;
   dipCognome: string;
-  sedeNome: string;
+  sedeNome: string | null;
 }
 
 interface Timbratura {
   id: number;
   userId: number;
-  sedeId: number;
+  sedeId: number | null;
   dipendente: string;
   sede: string;
   data: string;          // YYYY-MM-DD
@@ -37,6 +39,8 @@ interface Timbratura {
   lng: number;
   modificata: boolean;
   noteCorrezione?: string;
+  tipoAccesso: string;
+  motivoRemoto?: string;
 }
 
 interface TurnoCalcolato {
@@ -84,7 +88,7 @@ function fromApi(r: ApiTimbratura): Timbratura {
     userId: r.userId,
     sedeId: r.sedeId,
     dipendente: `${r.dipNome} ${r.dipCognome}`,
-    sede: r.sedeNome,
+    sede: r.sedeNome ?? "Remoto",
     data,
     orario: `${hh}:${mm}`,
     tipo: r.tipo,
@@ -92,6 +96,8 @@ function fromApi(r: ApiTimbratura): Timbratura {
     lng: r.lng,
     modificata: r.modificataManualmente,
     noteCorrezione: r.noteModifica ?? undefined,
+    tipoAccesso: r.tipoAccesso ?? "sede",
+    motivoRemoto: r.motivoRemoto ?? undefined,
   };
 }
 
@@ -243,7 +249,7 @@ export default function TimbraturePage() {
     setEditTurno(turno);
     setEditOraEnt(turno.entrata.orario);
     setEditOraUsc(turno.uscita?.orario ?? "");
-    setEditSedeId(turno.entrata.sedeId);
+    setEditSedeId(turno.entrata.sedeId ?? "");
     setEditNote("");
     setEditError("");
   }, []);

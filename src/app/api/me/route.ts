@@ -21,6 +21,7 @@ export async function GET() {
       oreSettimanali: utenti.oreSettimanali,
       dataAssunzione: utenti.dataAssunzione,
       attivo: utenti.attivo,
+      timbraturaRemotaAbilitata: utenti.timbraturaRemotaAbilitata,
     })
     .from(utenti)
     .where(eq(utenti.id, parseInt(user.id)))

@@ -17,6 +17,7 @@ interface Timbratura {
   lat: number;
   lng: number;
   timestamp: number;
+  tipoAccesso?: string;
 }
 
 /* ═══════════════════════════════════════════
@@ -96,6 +97,7 @@ export default function TimbraPage() {
             sede: t.sedeNome as string,
             lat: t.lat as number, lng: t.lng as number,
             timestamp: new Date(t.orario as string).getTime(),
+            tipoAccesso: t.tipoAccesso as string | undefined,
           })));
         }
       }).catch(() => {});
@@ -109,10 +111,22 @@ export default function TimbraPage() {
   const ultimaEntrata = [...timbAsc].reverse().find((t) => t.tipo === "Entrata");
   const uscitaDopoEntrata = ultimaEntrata ? timbAsc.find((t) => t.tipo === "Uscita" && t.timestamp > ultimaEntrata.timestamp) : null;
 
+  // Timbratura remota abilitata
+  const [timbraturaRemotaAbilitata, setTimbraturaRemotaAbilitata] = useState(false);
+  useEffect(() => {
+    fetch("/api/me")
+      .then(r => r.json())
+      .then((data) => {
+        if (data?.timbraturaRemotaAbilitata) setTimbraturaRemotaAbilitata(true);
+      }).catch(() => {});
+  }, []);
+
   // Modale
   const [showModal, setShowModal] = useState(false);
+  const [showRemotoModal, setShowRemotoModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingRemoto, setSubmittingRemoto] = useState(false);
   const [turnoChiuso, setTurnoChiuso] = useState(false);
   const [nuovoTurnoDelay, setNuovoTurnoDelay] = useState(false); // delay dopo "Inizia nuovo turno"
   const [modalReady, setModalReady] = useState(false); // delay prima che Conferma sia attivo
@@ -235,6 +249,35 @@ export default function TimbraPage() {
     }
   }
 
+  /* ── Conferma timbratura remota ── */
+  async function confermaTimbraRemoto(motivoRemoto: string) {
+    if (!coords || submittingRemoto) return;
+    const tipo = turnoAperto ? "Uscita" : "Entrata";
+
+    setShowRemotoModal(false);
+    setSubmittingRemoto(true);
+
+    try {
+      const res = await fetch("/api/timbrature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, lat: coords.lat, lng: coords.lng, tipoAccesso: "remoto", motivoRemoto }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Errore durante la timbratura remota");
+        setSubmittingRemoto(false);
+        return;
+      }
+
+      window.location.reload();
+    } catch {
+      alert("Errore di connessione. Riprova.");
+      setSubmittingRemoto(false);
+    }
+  }
+
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
   const canTimbra = !!risultato?.inSede && !turnoChiuso && !nuovoTurnoDelay;
 
@@ -264,7 +307,11 @@ export default function TimbraPage() {
       {geoStatus === "unsupported" && <GeoUnsupported />}
       {geoStatus === "denied" && <GeoDenied onRetry={rilevaPos} errorMsg={geoError} />}
       {geoStatus === "ready" && risultato && !risultato.inSede && (
-        <GeoFuoriSede risultato={risultato} />
+        <GeoFuoriSede
+          risultato={risultato}
+          timbraturaRemotaAbilitata={timbraturaRemotaAbilitata}
+          onTimbraRemoto={() => setShowRemotoModal(true)}
+        />
       )}
       {geoStatus === "ready" && risultato?.inSede && (
         <GeoInSede
@@ -291,7 +338,12 @@ export default function TimbraPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-muted">Entrata</p>
-              <p className="text-xl font-bold text-green-400 tabular-nums">{ultimaEntrata.orario.slice(0, 5)}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xl font-bold text-green-400 tabular-nums">{ultimaEntrata.orario.slice(0, 5)}</p>
+                {ultimaEntrata.tipoAccesso === "remoto" && (
+                  <span className="inline-flex items-center rounded-full bg-zinc-700/60 px-2 py-0.5 text-[10px] font-semibold text-zinc-400 border border-zinc-600/40">Remoto</span>
+                )}
+              </div>
               <p className="text-xs text-text-muted mt-0.5">{ultimaEntrata.sede}</p>
             </div>
             <div className="text-right">
@@ -344,6 +396,17 @@ export default function TimbraPage() {
         onConfirm={confermaTimbra}
         onCancel={() => setShowModal(false)}
       />}
+
+      {/* ═══ MODALE TIMBRATURA REMOTA ═══ */}
+      {showRemotoModal && coords && (
+        <TimbraRemotoModal
+          tipoTimbra={tipoTimbra}
+          coords={coords}
+          submitting={submittingRemoto}
+          onConfirm={confermaTimbraRemoto}
+          onCancel={() => setShowRemotoModal(false)}
+        />
+      )}
 
       {/* ═══ FEEDBACK SUCCESSO ═══ */}
       {showSuccess && (
@@ -444,7 +507,15 @@ function GeoDenied({ onRetry, errorMsg }: { onRetry: () => void; errorMsg?: stri
   );
 }
 
-function GeoFuoriSede({ risultato }: { risultato: RisultatoGeo }) {
+function GeoFuoriSede({
+  risultato,
+  timbraturaRemotaAbilitata,
+  onTimbraRemoto,
+}: {
+  risultato: RisultatoGeo;
+  timbraturaRemotaAbilitata: boolean;
+  onTimbraRemoto: () => void;
+}) {
   return (
     <div className="rounded-2xl bg-red-500/[0.06] border border-red-500/20 p-6 text-center">
       <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
@@ -464,6 +535,19 @@ function GeoFuoriSede({ risultato }: { risultato: RisultatoGeo }) {
       >
         TIMBRATURA NON DISPONIBILE
       </button>
+
+      {timbraturaRemotaAbilitata && (
+        <>
+          <div className="mt-4 mb-3 border-t border-border" />
+          <button
+            onClick={onTimbraRemoto}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-medium text-zinc-400 active:bg-white/5 active:scale-[0.98] transition-all min-h-[48px]"
+          >
+            <WifiOffIcon className="h-4 w-4" />
+            Timbra da Remoto
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -588,6 +672,80 @@ function TimbraModal({ tipoTimbra, sede, ora, coords, submitting, onConfirm, onC
   );
 }
 
+function TimbraRemotoModal({
+  tipoTimbra,
+  coords,
+  submitting,
+  onConfirm,
+  onCancel,
+}: {
+  tipoTimbra: "Entrata" | "Uscita";
+  coords: { lat: number; lng: number };
+  submitting: boolean;
+  onConfirm: (motivo: string) => void;
+  onCancel: () => void;
+}) {
+  const [ready, setReady] = useState(false);
+  const [motivo, setMotivo] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border-t sm:border border-border bg-card-bg animate-slide-up">
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <h2 className="text-lg font-bold text-foreground text-center">
+            Timbratura Remota — {tipoTimbra}
+          </h2>
+          <div className="rounded-xl bg-sidebar-bg p-4 space-y-3">
+            <div>
+              <label className="text-sm text-text-muted block mb-1.5">
+                Motivo o nota <span className="text-xs">(opzionale)</span>
+              </label>
+              <input
+                type="text"
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="es. catering Via Roma"
+                className="w-full rounded-lg border border-border bg-card-bg px-3 py-2.5 text-sm text-foreground placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted font-mono">GPS</span>
+              <span className="text-xs font-mono text-zinc-500">
+                {coords.lat.toFixed(6)}, {coords.lng.toFixed(6)}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 rounded-xl border border-border py-4 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[56px]"
+            >
+              Annulla
+            </button>
+            <button
+              onClick={() => onConfirm(motivo)}
+              disabled={!ready || submitting}
+              className={`flex-1 rounded-xl py-4 text-base font-semibold text-white transition-all min-h-[56px] disabled:opacity-40 ${
+                ready ? "active:scale-[0.97]" : ""
+              } ${tipoTimbra === "Entrata" ? "bg-green-600" : "bg-red-600"}`}
+            >
+              {!ready ? "Attendi..." : submitting ? "Invio..." : "Conferma"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InfoRow({ label, value, valueColor, small }: { label: string; value: string; valueColor?: string; small?: boolean }) {
   return (
     <div className="flex items-center justify-between">
@@ -665,6 +823,15 @@ function CheckIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+    </svg>
+  );
+}
+
+function WifiOffIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.464 8.464A7.5 7.5 0 0 0 4.9 11.1M15.536 8.464A7.5 7.5 0 0 1 19.1 11.1M6.343 12.657A4.5 4.5 0 0 0 5.1 14.4M17.657 12.657A4.5 4.5 0 0 1 18.9 14.4M10.06 16.06A1.5 1.5 0 0 0 10.5 18a1.5 1.5 0 0 0 3 0 1.5 1.5 0 0 0-.44-1.06" />
     </svg>
   );
 }
