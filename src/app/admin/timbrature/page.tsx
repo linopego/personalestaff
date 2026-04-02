@@ -187,6 +187,10 @@ export default function TimbraturePage() {
   const [filtroSede, setFiltroSede] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<"" | "Entrata" | "Uscita" | "incompleti">("");
 
+  // Modale eliminazione
+  const [deleteTurno, setDeleteTurno] = useState<TurnoCalcolato | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Modale correzione
   const [editTurno, setEditTurno] = useState<TurnoCalcolato | null>(null);
   const [editOraEnt, setEditOraEnt] = useState("");
@@ -253,6 +257,29 @@ export default function TimbraturePage() {
     setEditNote("");
     setEditError("");
   }, []);
+
+  async function handleDelete() {
+    if (!deleteTurno) return;
+    setDeleting(true);
+    try {
+      // Delete entrata
+      await fetch(`/api/timbrature/${deleteTurno.entrata.id}`, { method: "DELETE" });
+      // Delete uscita if exists
+      if (deleteTurno.uscita) {
+        await fetch(`/api/timbrature/${deleteTurno.uscita.id}`, { method: "DELETE" });
+      }
+    } catch { /* */ }
+    // Refresh data
+    const params = new URLSearchParams();
+    if (dataInizio) params.set("dataInizio", dataInizio);
+    if (dataFine) params.set("dataFine", dataFine);
+    if (filtroDip) params.set("userId", filtroDip);
+    if (filtroSede) params.set("sedeId", filtroSede);
+    const fresh = await fetch(`/api/timbrature?${params.toString()}`).then((r) => r.json());
+    setTimbrature((fresh as ApiTimbratura[]).map(fromApi));
+    setDeleting(false);
+    setDeleteTurno(null);
+  }
 
   async function saveEdit() {
     if (!editNote.trim()) { setEditError("Le note sono obbligatorie per le correzioni manuali."); return; }
@@ -439,6 +466,13 @@ export default function TimbraturePage() {
                           >
                             <PenIcon className="h-4 w-4" />
                           </button>
+                          <button
+                            onClick={() => setDeleteTurno(turno)}
+                            className="rounded-lg p-1.5 text-text-muted hover:bg-white/5 hover:text-red-400 transition-colors"
+                            title="Elimina timbratura"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -469,6 +503,67 @@ export default function TimbraturePage() {
           alert={riepilogo.incompleti > 0}
         />
       </div>
+
+      {/* ═══ MODALE ELIMINAZIONE ═══ */}
+      {deleteTurno && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setDeleteTurno(null)}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card-bg shadow-2xl border-t-4 border-t-red-500" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h2 className="text-lg font-semibold text-red-400">Elimina timbratura</h2>
+              <button onClick={() => setDeleteTurno(null)} className="text-text-muted hover:text-foreground">
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <div className="rounded-lg border border-border bg-sidebar-bg/50 px-4 py-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Dipendente</span>
+                  <span className="font-medium text-foreground">{deleteTurno.entrata.dipendente}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Tipo</span>
+                  <span className="font-medium text-foreground">
+                    Entrata{deleteTurno.uscita ? " / Uscita" : ""}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Data</span>
+                  <span className="font-medium text-foreground">{formatDate(deleteTurno.entrata.data)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Orario</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {deleteTurno.entrata.orario}{deleteTurno.uscita ? ` → ${deleteTurno.uscita.orario}` : ""}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Sede</span>
+                  <span className="font-medium text-foreground">{deleteTurno.entrata.sede}</span>
+                </div>
+              </div>
+              <p className="text-sm text-red-400 font-medium">
+                Questa azione è irreversibile. La timbratura verrà eliminata definitivamente.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+              <button
+                onClick={() => setDeleteTurno(null)}
+                className="min-h-[48px] rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="min-h-[48px] flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-60"
+              >
+                {deleting && <SpinnerIcon className="h-4 w-4 animate-spin" />}
+                Elimina definitivamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ MODALE CORREZIONE ═══ */}
       {editTurno && (
@@ -589,6 +684,14 @@ function XIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
     </svg>
   );
 }
