@@ -135,7 +135,7 @@ export default function TimbraPage() {
     setGeoError(null);
   }, [sediDB]);
 
-  /* ── Rileva posizione ── */
+  /* ── Rileva posizione (3 tentativi, prende il migliore) ── */
   const rilevaPos = useCallback(() => {
     if (!navigator.geolocation) {
       setGeoStatus("unsupported");
@@ -145,35 +145,52 @@ export default function TimbraPage() {
     setGeoLoading(true);
     setGeoError(null);
 
-    // Primo tentativo: alta precisione
-    navigator.geolocation.getCurrentPosition(
-      (pos) => processCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
+    const readings: { lat: number; lng: number; accuracy: number }[] = [];
+    let completed = 0;
+    let hasError = false;
+    const MAX_READINGS = 3;
+
+    function pickBest() {
+      if (readings.length === 0) return;
+      // Prendi la lettura con la precisione migliore (accuracy più bassa)
+      readings.sort((a, b) => a.accuracy - b.accuracy);
+      processCoords({ lat: readings[0].lat, lng: readings[0].lng });
+    }
+
+    function onSuccess(pos: GeolocationPosition) {
+      readings.push({
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      });
+      completed++;
+      if (completed >= MAX_READINGS) pickBest();
+    }
+
+    function onError(err: GeolocationPositionError) {
+      completed++;
+      if (err.code === err.PERMISSION_DENIED && !hasError) {
+        hasError = true;
+        setGeoStatus("denied");
+        setGeoLoading(false);
+        return;
+      }
+      // Se abbiamo almeno una lettura, usiamola
+      if (completed >= MAX_READINGS) {
+        if (readings.length > 0) {
+          pickBest();
+        } else {
           setGeoStatus("denied");
+          setGeoError("Il GPS non ha risposto. Assicurati di essere all'aperto o vicino a una finestra e riprova.");
           setGeoLoading(false);
-          return;
         }
-        // Timeout o errore → retry senza alta precisione (più veloce su iOS)
-        navigator.geolocation.getCurrentPosition(
-          (pos) => processCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          (err2) => {
-            if (err2.code === err2.PERMISSION_DENIED) {
-              setGeoStatus("denied");
-            } else if (err2.code === err2.TIMEOUT) {
-              setGeoStatus("denied");
-              setGeoError("Il GPS non ha risposto in tempo. Assicurati di essere all'aperto o vicino a una finestra e riprova.");
-            } else {
-              setGeoStatus("denied");
-              setGeoError("Impossibile rilevare la posizione. Riprova tra qualche secondo.");
-            }
-            setGeoLoading(false);
-          },
-          { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+      }
+    }
+
+    // Lancia 3 rilevamenti in parallelo con opzioni diverse
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, { enableHighAccuracy: false, timeout: 20000, maximumAge: 10000 });
   }, [sediDB, processCoords]);
 
   useEffect(() => { rilevaPos(); }, [rilevaPos]);
