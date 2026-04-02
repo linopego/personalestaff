@@ -41,7 +41,7 @@ export default function AdminLayout({
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AdminHeader onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-background">
+        <main className="flex-1 overflow-y-auto px-4 pt-4 pb-2 lg:p-8 bg-background">
           {children}
         </main>
       </div>
