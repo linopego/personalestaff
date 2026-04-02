@@ -207,7 +207,10 @@ export default function TimbraPage() {
     if (!risultato?.inSede || !risultato.sede || !coords || !matchedSedeId || submitting) return;
     const tipo = turnoAperto ? "Uscita" : "Entrata";
 
+    // CHIUDI MODALE SUBITO — prima di qualsiasi state update
+    setShowModal(false);
     setSubmitting(true);
+
     try {
       const res = await fetch("/api/timbrature", {
         method: "POST",
@@ -218,10 +221,15 @@ export default function TimbraPage() {
       if (!res.ok) {
         const err = await res.json();
         alert(err.error || "Errore durante la timbratura");
-        setShowModal(false);
         setSubmitting(false);
         return;
       }
+
+      // Successo — aggiorna state DOPO che la modale è già chiusa
+      if (tipo === "Uscita") setTurnoChiuso(true);
+      setShowSuccess(true);
+      if (successTimeout.current) clearTimeout(successTimeout.current);
+      successTimeout.current = setTimeout(() => setShowSuccess(false), 2500);
 
       const t: Timbratura = {
         tipo,
@@ -236,12 +244,7 @@ export default function TimbraPage() {
       alert("Errore di connessione. Riprova.");
     }
 
-    setShowModal(false);
     setSubmitting(false);
-    setShowSuccess(true);
-    if (tipo === "Uscita") setTurnoChiuso(true);
-    if (successTimeout.current) clearTimeout(successTimeout.current);
-    successTimeout.current = setTimeout(() => setShowSuccess(false), 2500);
   }
 
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
