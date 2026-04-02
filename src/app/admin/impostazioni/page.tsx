@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 /* ═══════════════════════════════════════════
    TYPES
@@ -33,18 +33,6 @@ interface NotificaPref {
    MOCK DATA
    ═══════════════════════════════════════════ */
 
-const initialUtenti: Utente[] = [
-  { id: 1, nome: "Marco Bianchi", email: "m.bianchi@presenzestaff.it", contratto: "Fisso", ultimoAccesso: "01/04/2026 08:02", attivo: true },
-  { id: 2, nome: "Giulia Ferretti", email: "g.ferretti@presenzestaff.it", contratto: "Fisso", ultimoAccesso: "01/04/2026 09:00", attivo: true },
-  { id: 3, nome: "Alessandro Conti", email: "a.conti@presenzestaff.it", contratto: "Part-time", ultimoAccesso: "01/04/2026 18:00", attivo: true },
-  { id: 4, nome: "Francesca Romano", email: "f.romano@presenzestaff.it", contratto: "Fisso", ultimoAccesso: "01/04/2026 06:30", attivo: true },
-  { id: 5, nome: "Luca Moretti", email: "l.moretti@presenzestaff.it", contratto: "A chiamata", ultimoAccesso: "30/03/2026 22:00", attivo: true },
-  { id: 6, nome: "Sara Colombo", email: "s.colombo@presenzestaff.it", contratto: "Part-time", ultimoAccesso: "01/04/2026 11:00", attivo: true },
-  { id: 7, nome: "Davide Ricci", email: "d.ricci@presenzestaff.it", contratto: "A chiamata", ultimoAccesso: "15/02/2026 19:00", attivo: false },
-  { id: 8, nome: "Elena Galli", email: "e.galli@presenzestaff.it", contratto: "Fisso", ultimoAccesso: "01/04/2026 20:00", attivo: true },
-  { id: 9, nome: "Andrea Marino", email: "a.marino@presenzestaff.it", contratto: "Part-time", ultimoAccesso: "01/04/2026 10:00", attivo: true },
-  { id: 10, nome: "Chiara Greco", email: "c.greco@presenzestaff.it", contratto: "A chiamata", ultimoAccesso: "30/03/2026 18:30", attivo: true },
-];
 
 const logAccessi = [
   { data: "01/04/2026 09:15", utente: "Admin (Marco Bianchi)", dispositivo: "Chrome / macOS", ip: "93.42.118.xxx", esito: "Successo" as const },
@@ -250,24 +238,53 @@ function TabGenerale() {
    ═══════════════════════════════════════════ */
 
 function TabUtenti() {
-  const [utenti, setUtenti] = useState(initialUtenti);
+  const [utenti, setUtenti] = useState<Utente[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editUser, setEditUser] = useState<Utente | null>(null);
   const [editForm, setEditForm] = useState({ contratto: "Fisso" as TipoContratto, attivo: true });
+
+  const fetchUtenti = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/dipendenti");
+      if (res.ok) {
+        const data = await res.json();
+        setUtenti(data.map((d: Record<string, unknown>) => ({
+          id: d.id as number,
+          nome: `${d.nome} ${d.cognome}`,
+          email: d.email as string,
+          contratto: d.tipoContratto as TipoContratto,
+          ultimoAccesso: "—",
+          attivo: d.attivo as boolean,
+        })));
+      }
+    } catch { /* */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchUtenti(); }, [fetchUtenti]);
 
   function openEdit(u: Utente) {
     setEditUser(u);
     setEditForm({ contratto: u.contratto, attivo: u.attivo });
   }
 
-  function saveEdit() {
+  async function saveEdit() {
     if (!editUser) return;
-    setUtenti((prev) =>
-      prev.map((u) => (u.id === editUser.id ? { ...u, contratto: editForm.contratto, attivo: editForm.attivo } : u))
-    );
+    await fetch(`/api/dipendenti/${editUser.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipoContratto: editForm.contratto, attivo: editForm.attivo }),
+    });
     setEditUser(null);
+    fetchUtenti();
   }
 
   const selectCls = "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent appearance-none cursor-pointer";
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>;
+  }
 
   return (
     <div>
