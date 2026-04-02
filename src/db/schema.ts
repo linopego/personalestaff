@@ -107,6 +107,31 @@ export const logAccessi = pgTable("log_accessi", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+/* ── Turni ── */
+export const turni = pgTable("turni", {
+  id: serial("id").primaryKey(),
+  data: date("data").notNull(),
+  sedeId: integer("sede_id").notNull().references(() => sedi.id),
+  areaOperativa: varchar("area_operativa", { length: 30 }).notNull(), // sala, bar, cassa, guardaroba, altro
+  orarioInizio: varchar("orario_inizio", { length: 5 }).notNull(), // HH:mm
+  orarioFine: varchar("orario_fine", { length: 5 }).notNull(),
+  note: text("note"),
+  stato: varchar("stato", { length: 15 }).notNull().default("bozza"), // bozza, confermato
+  creatoDa: integer("creato_da").notNull().references(() => utenti.id),
+  creatoAt: timestamp("creato_at").defaultNow().notNull(),
+  aggiornatoAt: timestamp("aggiornato_at").defaultNow().notNull(),
+});
+
+/* ── Assegnazioni Turni ── */
+export const turniAssegnazioni = pgTable("turni_assegnazioni", {
+  id: serial("id").primaryKey(),
+  turnoId: integer("turno_id").notNull().references(() => turni.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => utenti.id),
+  mansione: text("mansione"),
+  aggiuntoDa: integer("aggiunto_da").notNull().references(() => utenti.id),
+  aggiuntoAt: timestamp("aggiunto_at").defaultNow().notNull(),
+});
+
 /* ── Visibilità Ore (filtro staff) ── */
 export const visibilitySettings = pgTable("visibility_settings", {
   id: serial("id").primaryKey(),
