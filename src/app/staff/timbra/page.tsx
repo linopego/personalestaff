@@ -310,6 +310,8 @@ export default function TimbraPage() {
         <GeoFuoriSede
           risultato={risultato}
           timbraturaRemotaAbilitata={timbraturaRemotaAbilitata}
+          turnoAperto={turnoAperto}
+          tipoTimbra={tipoTimbra}
           onTimbraRemoto={() => setShowRemotoModal(true)}
         />
       )}
@@ -510,12 +512,39 @@ function GeoDenied({ onRetry, errorMsg }: { onRetry: () => void; errorMsg?: stri
 function GeoFuoriSede({
   risultato,
   timbraturaRemotaAbilitata,
+  turnoAperto,
+  tipoTimbra,
   onTimbraRemoto,
 }: {
   risultato: RisultatoGeo;
   timbraturaRemotaAbilitata: boolean;
+  turnoAperto: boolean;
+  tipoTimbra: "Entrata" | "Uscita";
   onTimbraRemoto: () => void;
 }) {
+  // Se ha un turno remoto aperto, mostra il pulsante uscita remoto prominente
+  if (timbraturaRemotaAbilitata && turnoAperto) {
+    return (
+      <div className="rounded-2xl bg-amber-500/[0.06] border border-amber-500/20 p-6 flex flex-col items-center">
+        <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-4 py-1.5 mb-4">
+          <WifiOffIcon className="h-4 w-4 text-amber-400" />
+          <span className="text-sm font-semibold text-amber-400">Turno remoto in corso</span>
+        </div>
+        <p className="text-sm text-text-muted mb-6">
+          Distanza dalla sede più vicina: <strong className="text-foreground">{risultato.distanza}m</strong>
+        </p>
+        <button
+          onClick={onTimbraRemoto}
+          className="flex flex-col items-center justify-center rounded-full w-[200px] h-[200px] shadow-lg bg-red-600 shadow-red-600/20 active:scale-[0.95] active:brightness-90 transition-all duration-150"
+        >
+          <ArrowUpIcon className="h-12 w-12 text-white mb-1" />
+          <span className="text-lg font-bold text-white">TIMBRA</span>
+          <span className="text-sm font-semibold text-white/80">USCITA REMOTA</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl bg-red-500/[0.06] border border-red-500/20 p-6 text-center">
       <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
