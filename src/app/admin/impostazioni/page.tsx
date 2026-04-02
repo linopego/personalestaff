@@ -34,18 +34,6 @@ interface NotificaPref {
    ═══════════════════════════════════════════ */
 
 
-const logAccessi = [
-  { data: "01/04/2026 09:15", utente: "Admin (Marco Bianchi)", dispositivo: "Chrome / macOS", ip: "93.42.118.xxx", esito: "Successo" as const },
-  { data: "01/04/2026 08:02", utente: "Marco Bianchi", dispositivo: "App iOS 17.4", ip: "93.42.118.xxx", esito: "Successo" as const },
-  { data: "01/04/2026 06:30", utente: "Francesca Romano", dispositivo: "App Android 14", ip: "151.38.22.xxx", esito: "Successo" as const },
-  { data: "31/03/2026 23:58", utente: "Utente sconosciuto", dispositivo: "Firefox / Windows", ip: "185.220.101.xxx", esito: "Fallito" as const },
-  { data: "31/03/2026 20:00", utente: "Elena Galli", dispositivo: "App iOS 17.4", ip: "2.237.84.xxx", esito: "Successo" as const },
-  { data: "31/03/2026 18:05", utente: "Admin (Marco Bianchi)", dispositivo: "Safari / macOS", ip: "93.42.118.xxx", esito: "Successo" as const },
-  { data: "31/03/2026 11:00", utente: "Sara Colombo", dispositivo: "App Android 14", ip: "79.18.55.xxx", esito: "Successo" as const },
-  { data: "30/03/2026 22:30", utente: "Luca Moretti", dispositivo: "App iOS 17.4", ip: "5.90.167.xxx", esito: "Successo" as const },
-  { data: "30/03/2026 19:12", utente: "Utente sconosciuto", dispositivo: "Chrome / Linux", ip: "45.155.205.xxx", esito: "Fallito" as const },
-  { data: "30/03/2026 10:05", utente: "Andrea Marino", dispositivo: "App Android 14", ip: "151.38.22.xxx", esito: "Successo" as const },
-];
 
 /* ═══════════════════════════════════════════
    HELPERS
@@ -107,7 +95,7 @@ export default function ImpostazioniPage() {
    ═══════════════════════════════════════════ */
 
 function TabGenerale() {
-  const [nomeAzienda, setNomeAzienda] = useState("Presenze Staff");
+  const [nomeAzienda, setNomeAzienda] = useState("PresenzApp");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [fusoOrario, setFusoOrario] = useState("Europe/Rome");
   const [formatoOra, setFormatoOra] = useState<"24h" | "12h">("24h");
@@ -115,13 +103,28 @@ function TabGenerale() {
   const [maxOreGiornaliere, setMaxOreGiornaliere] = useState(10);
   const [tolleranza, setTolleranza] = useState(5);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/impostazioni").then(r => r.json()).then((data) => {
+      if (data.nomeAzienda) setNomeAzienda(data.nomeAzienda);
+      if (data.fusoOrario) setFusoOrario(data.fusoOrario);
+      if (data.formatoOra) setFormatoOra(data.formatoOra);
+      if (data.primoGiorno) setPrimoGiorno(data.primoGiorno);
+      if (data.maxOreGiornaliere) setMaxOreGiornaliere(data.maxOreGiornaliere);
+      if (data.tolleranzaMinuti !== undefined) setTolleranza(data.tolleranzaMinuti);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
 
   function handleLogoUpload() {
-    // Simula upload
     setLogoPreview("PS");
   }
 
-  function handleSave() {
+  async function handleSave() {
+    await fetch("/api/impostazioni", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nomeAzienda, fusoOrario, formatoOra, primoGiorno, maxOreGiornaliere, tolleranzaMinuti: tolleranza }),
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
@@ -407,18 +410,42 @@ function TabUtenti() {
 
 function TabNotifiche() {
   const [prefs, setPrefs] = useState<NotificaPref>({
-    turniIncompleti: true,
-    turniIncompletiEmail: "admin@presenzestaff.it",
-    oreMax: true,
-    oreMaxEmail: "admin@presenzestaff.it",
-    riepilogoSett: false,
-    riepilogoSettEmail: "admin@presenzestaff.it",
-    timbratureAnomale: true,
-    timbratureAnomaleEmail: "admin@presenzestaff.it",
+    turniIncompleti: true, turniIncompletiEmail: "",
+    oreMax: true, oreMaxEmail: "",
+    riepilogoSett: false, riepilogoSettEmail: "",
+    timbratureAnomale: true, timbratureAnomaleEmail: "",
   });
   const [saved, setSaved] = useState(false);
 
-  function handleSave() {
+  useEffect(() => {
+    fetch("/api/impostazioni").then(r => r.json()).then((data) => {
+      setPrefs({
+        turniIncompleti: data.notifTurniIncompleti ?? true,
+        turniIncompletiEmail: data.notifTurniIncompletiEmail ?? "",
+        oreMax: data.notifOreMax ?? true,
+        oreMaxEmail: data.notifOreMaxEmail ?? "",
+        riepilogoSett: data.notifRiepilogoSett ?? false,
+        riepilogoSettEmail: data.notifRiepilogoSettEmail ?? "",
+        timbratureAnomale: data.notifTimbratureAnomale ?? true,
+        timbratureAnomaleEmail: data.notifTimbratureAnomaleEmail ?? "",
+      });
+    }).catch(() => {});
+  }, []);
+
+  async function handleSave() {
+    await fetch("/api/impostazioni", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        notifTurniIncompleti: prefs.turniIncompleti,
+        notifTurniIncompletiEmail: prefs.turniIncompletiEmail,
+        notifOreMax: prefs.oreMax,
+        notifOreMaxEmail: prefs.oreMaxEmail,
+        notifRiepilogoSett: prefs.riepilogoSett,
+        notifRiepilogoSettEmail: prefs.riepilogoSettEmail,
+        notifTimbratureAnomale: prefs.timbratureAnomale,
+        notifTimbratureAnomaleEmail: prefs.timbratureAnomaleEmail,
+      }),
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
@@ -489,6 +516,14 @@ function TabSicurezza() {
   const [pwConfirm, setPwConfirm] = useState("");
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState("");
+
+  // Log accessi dal DB
+  const [logs, setLogs] = useState<{ createdAt: string; utente: string; dispositivo: string | null; ip: string | null; esito: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/log-accessi").then(r => r.json()).then((data) => {
+      if (Array.isArray(data)) setLogs(data);
+    }).catch(() => {});
+  }, []);
 
   function handleChangePw() {
     setPwError("");
@@ -573,12 +608,15 @@ function TabSicurezza() {
               </tr>
             </thead>
             <tbody>
-              {logAccessi.map((log, i) => (
+              {logs.length === 0 && (
+                <tr><td colSpan={5} className="px-5 py-8 text-center text-sm text-text-muted">Nessun accesso registrato.</td></tr>
+              )}
+              {logs.map((log, i) => (
                 <tr key={i} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
-                  <td className="px-5 py-3 text-sm font-mono text-foreground">{log.data}</td>
+                  <td className="px-5 py-3 text-sm font-mono text-foreground">{new Date(log.createdAt).toLocaleString("it-IT")}</td>
                   <td className="px-5 py-3 text-sm text-foreground">{log.utente}</td>
-                  <td className="px-5 py-3 text-sm text-text-muted">{log.dispositivo}</td>
-                  <td className="px-5 py-3 text-sm font-mono text-text-muted">{log.ip}</td>
+                  <td className="px-5 py-3 text-sm text-text-muted">{log.dispositivo ?? "—"}</td>
+                  <td className="px-5 py-3 text-sm font-mono text-text-muted">{log.ip ?? "—"}</td>
                   <td className="px-5 py-3">
                     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${log.esito === "Successo" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
                       {log.esito}
