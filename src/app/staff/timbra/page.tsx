@@ -101,11 +101,13 @@ export default function TimbraPage() {
       }).catch(() => {});
   }, []);
   // L'ultima timbratura determina il prossimo tipo
-  const ultimaTimbratura = timbrature.length > 0 ? timbrature[timbrature.length - 1] : null;
+  // API restituisce in ordine DESC (più recente prima) → timbrature[0] è la più recente
+  const ultimaTimbratura = timbrature.length > 0 ? timbrature[0] : null;
   const turnoAperto = ultimaTimbratura?.tipo === "Entrata";
-  // Per il riquadro turno corrente: ultimo turno aperto (ultima entrata senza uscita dopo)
-  const ultimaEntrata = [...timbrature].reverse().find((t) => t.tipo === "Entrata");
-  const uscitaDopoEntrata = ultimaEntrata ? timbrature.find((t) => t.tipo === "Uscita" && t.timestamp > ultimaEntrata.timestamp) : null;
+  // Per il riquadro turno corrente — ordino ASC per trovare coppie corrette
+  const timbAsc = [...timbrature].sort((a, b) => a.timestamp - b.timestamp);
+  const ultimaEntrata = [...timbAsc].reverse().find((t) => t.tipo === "Entrata");
+  const uscitaDopoEntrata = ultimaEntrata ? timbAsc.find((t) => t.tipo === "Uscita" && t.timestamp > ultimaEntrata.timestamp) : null;
 
   // Modale
   const [showModal, setShowModal] = useState(false);
@@ -225,8 +227,8 @@ export default function TimbraPage() {
         return;
       }
 
-      // Successo — naviga via e torna, così il componente è ricreato da zero
-      window.location.href = "/staff/storico";
+      // Successo — ricarica per state pulito dal DB
+      window.location.reload();
     } catch {
       alert("Errore di connessione. Riprova.");
       setSubmitting(false);
