@@ -372,7 +372,7 @@ function TabDipendenti() {
   async function saveForm() {
     if (!form.nome || !form.cognome) return;
     if (editingId !== null) {
-      await fetch(`/api/dipendenti/${editingId}`, {
+      const res = await fetch(`/api/dipendenti/${editingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -382,8 +382,12 @@ function TabDipendenti() {
           attivo: form.attivo, timbraturaRemotaAbilitata: form.timbraturaRemotaAbilitata,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Errore salvataggio: ${err.error || res.statusText}`);
+        return;
+      }
     }
-    // Nota: creazione dipendente richiede un endpoint dedicato con password — per ora solo modifica
     setFormOpen(false);
     fetchDipendenti();
   }
