@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { compare } from "bcryptjs";
 import { db } from "@/db";
-import { utenti, googleWhitelist } from "@/db/schema";
+import { utenti, googleWhitelist, logAccessi } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export const authOptions: NextAuthOptions = {
@@ -45,6 +45,18 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account }) {
+      // Log accesso
+      try {
+        await db.insert(logAccessi).values({
+          userId: user.id ? parseInt(user.id as string) || null : null,
+          email: user.email ?? "unknown",
+          utente: user.name ?? user.email ?? "unknown",
+          dispositivo: account?.provider === "google" ? "Google OAuth" : "Email/Password",
+          ip: "—",
+          esito: "Successo",
+        });
+      } catch { /* non bloccare il login per un errore di log */ }
+
       if (account?.provider !== "google") return true;
 
       const email = user.email?.toLowerCase();

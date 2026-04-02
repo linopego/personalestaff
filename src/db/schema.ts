@@ -71,3 +71,35 @@ export const timbrature = pgTable("timbrature", {
   modifiedBy: integer("modified_by").references(() => utenti.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/* ── Impostazioni App (singleton — una sola riga) ── */
+export const impostazioni = pgTable("impostazioni", {
+  id: serial("id").primaryKey(),
+  nomeAzienda: varchar("nome_azienda", { length: 255 }).notNull().default("PresenzApp"),
+  fusoOrario: varchar("fuso_orario", { length: 50 }).notNull().default("Europe/Rome"),
+  formatoOra: varchar("formato_ora", { length: 5 }).notNull().default("24h"),
+  primoGiorno: varchar("primo_giorno", { length: 10 }).notNull().default("lunedi"),
+  maxOreGiornaliere: integer("max_ore_giornaliere").notNull().default(10),
+  tolleranzaMinuti: integer("tolleranza_minuti").notNull().default(5),
+  notifTurniIncompleti: boolean("notif_turni_incompleti").notNull().default(true),
+  notifTurniIncompletiEmail: varchar("notif_turni_incompleti_email", { length: 255 }).default(""),
+  notifOreMax: boolean("notif_ore_max").notNull().default(true),
+  notifOreMaxEmail: varchar("notif_ore_max_email", { length: 255 }).default(""),
+  notifRiepilogoSett: boolean("notif_riepilogo_sett").notNull().default(false),
+  notifRiepilogoSettEmail: varchar("notif_riepilogo_sett_email", { length: 255 }).default(""),
+  notifTimbratureAnomale: boolean("notif_timbrature_anomale").notNull().default(true),
+  notifTimbratureAnomaleEmail: varchar("notif_timbrature_anomale_email", { length: 255 }).default(""),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/* ── Log Accessi ── */
+export const logAccessi = pgTable("log_accessi", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => utenti.id),
+  email: varchar("email", { length: 255 }).notNull(),
+  utente: varchar("utente", { length: 255 }).notNull(),
+  dispositivo: varchar("dispositivo", { length: 255 }),
+  ip: varchar("ip", { length: 50 }),
+  esito: varchar("esito", { length: 20 }).notNull().default("Successo"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
