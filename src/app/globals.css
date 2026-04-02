@@ -36,6 +36,20 @@ body {
   color: var(--foreground);
 }
 
+/* PWA: cover the home indicator area on iPhone */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body::after {
+    content: "";
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-bottom, 0px);
+    background: var(--sidebar-bg);
+    z-index: 39;
+  }
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
