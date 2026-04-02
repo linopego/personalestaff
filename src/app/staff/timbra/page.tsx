@@ -111,9 +111,8 @@ export default function TimbraPage() {
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [cooldown, setCooldown] = useState(false);
+  const [turnoChiuso, setTurnoChiuso] = useState(false); // blocca dopo uscita fino a tap esplicito
   const successTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const cooldownTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Stato errore geo per messaggi specifici
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -238,15 +237,13 @@ export default function TimbraPage() {
     setShowModal(false);
     setSubmitting(false);
     setShowSuccess(true);
-    setCooldown(true);
+    if (tipo === "Uscita") setTurnoChiuso(true);
     if (successTimeout.current) clearTimeout(successTimeout.current);
     successTimeout.current = setTimeout(() => setShowSuccess(false), 2500);
-    if (cooldownTimeout.current) clearTimeout(cooldownTimeout.current);
-    cooldownTimeout.current = setTimeout(() => setCooldown(false), 3000);
   }
 
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
-  const canTimbra = !!risultato?.inSede && !cooldown;
+  const canTimbra = !!risultato?.inSede && !turnoChiuso;
 
   return (
     <div className="flex flex-col gap-4">
@@ -281,7 +278,9 @@ export default function TimbraPage() {
           risultato={risultato}
           tipo={tipoTimbra}
           canTimbra={canTimbra!}
+          turnoChiuso={turnoChiuso}
           onTimbra={() => setShowModal(true)}
+          onNuovoTurno={() => setTurnoChiuso(false)}
         />
       )}
 
@@ -511,12 +510,16 @@ function GeoInSede({
   risultato,
   tipo,
   canTimbra,
+  turnoChiuso,
   onTimbra,
+  onNuovoTurno,
 }: {
   risultato: RisultatoGeo;
   tipo: "Entrata" | "Uscita";
   canTimbra: boolean;
+  turnoChiuso: boolean;
   onTimbra: () => void;
+  onNuovoTurno: () => void;
 }) {
   const isEntrata = tipo === "Entrata";
 
@@ -529,8 +532,22 @@ function GeoInSede({
         <span className="text-xs text-green-400/60">{risultato.distanza}m</span>
       </div>
 
-      {/* Pulsante timbra */}
-      {canTimbra ? (
+      {/* Stato: turno chiuso → mostra completato + pulsante nuovo turno */}
+      {turnoChiuso ? (
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center justify-center rounded-full w-[200px] h-[200px] bg-zinc-700/50">
+            <CheckIcon className="h-12 w-12 text-green-400 mb-1" />
+            <span className="text-lg font-bold text-foreground">TURNO</span>
+            <span className="text-sm font-semibold text-green-400">COMPLETATO</span>
+          </div>
+          <button
+            onClick={onNuovoTurno}
+            className="rounded-xl border border-border bg-card-bg px-6 py-3.5 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[48px]"
+          >
+            Inizia nuovo turno
+          </button>
+        </div>
+      ) : canTimbra ? (
         <button
           onClick={onTimbra}
           className={`flex flex-col items-center justify-center rounded-full w-[200px] h-[200px] shadow-lg active:scale-[0.95] active:brightness-90 transition-all duration-150 ${
