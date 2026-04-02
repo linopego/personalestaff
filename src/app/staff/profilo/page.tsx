@@ -137,9 +137,9 @@ export default function ProfiloPage() {
   const initials = `${meData.nome[0]}${meData.cognome[0]}`;
 
   return (
-    <div className="flex flex-col gap-5 -mx-4 sm:-mx-6">
+    <div className="flex flex-col gap-5 -mx-4 -mt-3 sm:-mx-6 sm:-mt-6">
       {/* ── Hero ── */}
-      <div className="relative bg-gradient-to-b from-accent/20 to-transparent px-4 pt-8 pb-6 sm:px-6">
+      <div className="relative bg-gradient-to-b from-sidebar-bg via-accent/20 to-transparent px-4 pt-8 pb-6 sm:px-6">
         <div className="flex flex-col items-center text-center">
           <div className={`flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${avatarColor(fullName)} text-2xl font-bold text-white shadow-lg`}>
             {initials}
