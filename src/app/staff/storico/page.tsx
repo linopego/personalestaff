@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import VisibilityBanner from "@/components/visibility-banner";
 
 /* ═══════════════════════════════════════════
    TYPES
@@ -130,6 +131,7 @@ export default function StoricoPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-foreground">Le Mie Timbrature</h1>
+      <VisibilityBanner />
 
       {/* Tabs */}
       <div className="grid grid-cols-2 gap-2">

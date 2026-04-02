@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { utenti, timbrature } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { getSession, unauthorized } from "@/lib/api-auth";
+import { getVisibilityDate } from "@/lib/visibility";
 
 export async function GET() {
   const user = await getSession();
@@ -83,8 +84,11 @@ export async function GET() {
     return giorni.size;
   }
 
+  const visDate = await getVisibilityDate(userId);
+
   return NextResponse.json({
     ...row,
+    visibilitaDal: visDate?.toISOString() ?? null,
     riepilogo: {
       oreSett: calcolaOre(timbratureSett),
       oreMese: calcolaOre(timbratureMese),
