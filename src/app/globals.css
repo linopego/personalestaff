@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ── Dark theme (default) ── */
 :root {
   --background: #0f1117;
   --foreground: #e4e4e7;
@@ -12,6 +13,21 @@
   --text-muted: #71717a;
   --accent-warm: #f59e0b;
   --accent-warm-muted: rgba(245, 158, 11, 0.1);
+}
+
+/* ── Light theme ── */
+[data-theme="light"] {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --sidebar-bg: #ffffff;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-muted: rgba(37, 99, 235, 0.08);
+  --text-muted: #64748b;
+  --accent-warm: #d97706;
+  --accent-warm-muted: rgba(217, 119, 6, 0.08);
 }
 
 @theme inline {
@@ -34,6 +50,16 @@
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+/* Light theme adjustments for elements using opacity-based colors */
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+[data-theme="light"] .bg-white\/\[0\.02\],
+[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover {
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 /* PWA bottom area handled by nav padding */

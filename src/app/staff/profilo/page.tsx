@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useTheme } from "@/lib/theme-context";
 
 /* ═══════════════════════════════════════════
    TYPES
@@ -100,7 +101,7 @@ export default function ProfiloPage() {
   const [loadingMe, setLoadingMe] = useState(true);
 
   const [notifiche, setNotifiche] = useState(true);
-  const [temaScuro, setTemaScuro] = useState(true);
+  const { theme, toggleTheme } = useTheme();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
@@ -193,7 +194,7 @@ export default function ProfiloPage() {
         {/* ── Impostazioni App ── */}
         <Section title="Impostazioni App">
           <ToggleItem label="Notifiche push" value={notifiche} onChange={setNotifiche} />
-          <ToggleItem label="Tema scuro" value={temaScuro} onChange={setTemaScuro} />
+          <ToggleItem label={theme === "dark" ? "Tema scuro" : "Tema chiaro"} value={theme === "dark"} onChange={toggleTheme} />
           <TappableItem label="Lingua" value="Italiano" onTap={() => alert("Funzione in arrivo.")} />
           <TappableItem label="Informazioni App" value={`v1.0.0`} onTap={() => setShowInfoModal(true)} last />
         </Section>
