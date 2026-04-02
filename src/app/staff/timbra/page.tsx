@@ -225,8 +225,8 @@ export default function TimbraPage() {
         return;
       }
 
-      // Successo — ricarica la pagina per state pulito
-      window.location.reload();
+      // Successo — naviga via e torna, così il componente è ricreato da zero
+      window.location.href = "/staff/storico";
     } catch {
       alert("Errore di connessione. Riprova.");
       setSubmitting(false);
