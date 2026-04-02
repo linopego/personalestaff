@@ -29,3 +29,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getSession();
+  if (!user) return unauthorized();
+  if (user.ruolo !== "admin") return forbidden();
+
+  const { id } = await params;
+  const idNum = parseInt(id);
+
+  // Verifica che esista
+  const [existing] = await db.select().from(timbrature).where(eq(timbrature.id, idNum)).limit(1);
+  if (!existing) {
+    return NextResponse.json({ error: "Timbratura non trovata" }, { status: 404 });
+  }
+
+  // Cancella fisicamente
+  await db.delete(timbrature).where(eq(timbrature.id, idNum));
+
+  return NextResponse.json({ message: "Timbratura eliminata" });
+}
