@@ -220,7 +220,7 @@ export default function TimbraPage() {
   const canTimbra = risultato?.inSede && !(entrata && uscita);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       {/* ── Data e ora ── */}
       <div className="text-center">
         <p className="text-lg font-semibold text-foreground">{user?.name ?? "Dipendente"}</p>

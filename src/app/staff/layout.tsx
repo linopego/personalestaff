@@ -87,8 +87,8 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       </nav>
 
       {/* ── Content ── */}
-      <main className="flex-1 overflow-y-auto pb-20 sm:pb-0">
-        <div className="mx-auto max-w-lg px-4 py-5 sm:max-w-2xl sm:px-6 sm:py-6">
+      <main className="flex-1 overflow-y-auto sm:pb-0" style={{ paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }}>
+        <div className="mx-auto max-w-lg px-4 py-4 sm:max-w-2xl sm:px-6 sm:py-6">
           {children}
         </div>
       </main>
