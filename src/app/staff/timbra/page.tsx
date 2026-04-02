@@ -207,7 +207,7 @@ export default function TimbraPage() {
     if (!risultato?.inSede || !risultato.sede || !coords || !matchedSedeId || submitting) return;
     const tipo = turnoAperto ? "Uscita" : "Entrata";
 
-    // CHIUDI MODALE SUBITO — prima di qualsiasi state update
+    // Chiudi modale SUBITO
     setShowModal(false);
     setSubmitting(true);
 
@@ -225,26 +225,12 @@ export default function TimbraPage() {
         return;
       }
 
-      // Successo — aggiorna state DOPO che la modale è già chiusa
-      if (tipo === "Uscita") setTurnoChiuso(true);
-      setShowSuccess(true);
-      if (successTimeout.current) clearTimeout(successTimeout.current);
-      successTimeout.current = setTimeout(() => setShowSuccess(false), 2500);
-
-      const t: Timbratura = {
-        tipo,
-        orario: formatOra(new Date()),
-        sede: risultato.sede.nome,
-        lat: coords.lat,
-        lng: coords.lng,
-        timestamp: Date.now(),
-      };
-      setTimbrature((prev) => [...prev, t]);
+      // Successo — ricarica la pagina per state pulito
+      window.location.reload();
     } catch {
       alert("Errore di connessione. Riprova.");
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
   }
 
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
