@@ -110,6 +110,7 @@ export default function TimbraPage() {
   // Modale
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const successTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Stato errore geo per messaggi specifici
@@ -200,9 +201,10 @@ export default function TimbraPage() {
 
   /* ── Conferma timbratura ── */
   async function confermaTimbra() {
-    if (!risultato?.inSede || !risultato.sede || !coords || !matchedSedeId) return;
+    if (!risultato?.inSede || !risultato.sede || !coords || !matchedSedeId || submitting) return;
     const tipo = turnoAperto ? "Uscita" : "Entrata";
 
+    setSubmitting(true);
     try {
       const res = await fetch("/api/timbrature", {
         method: "POST",
@@ -214,6 +216,7 @@ export default function TimbraPage() {
         const err = await res.json();
         alert(err.error || "Errore durante la timbratura");
         setShowModal(false);
+        setSubmitting(false);
         return;
       }
 
@@ -231,6 +234,7 @@ export default function TimbraPage() {
     }
 
     setShowModal(false);
+    setSubmitting(false);
     setShowSuccess(true);
     if (successTimeout.current) clearTimeout(successTimeout.current);
     successTimeout.current = setTimeout(() => setShowSuccess(false), 2500);
@@ -360,7 +364,8 @@ export default function TimbraPage() {
                 </button>
                 <button
                   onClick={confermaTimbra}
-                  className={`flex-1 rounded-xl py-4 text-base font-semibold text-white active:scale-[0.97] transition-all min-h-[56px] ${
+                  disabled={submitting}
+                  className={`flex-1 rounded-xl py-4 text-base font-semibold text-white active:scale-[0.97] transition-all min-h-[56px] disabled:opacity-50 ${
                     tipoTimbra === "Entrata"
                       ? "bg-green-600 active:bg-green-700"
                       : "bg-red-600 active:bg-red-700"
