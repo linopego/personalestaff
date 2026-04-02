@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
       lng: timbrature.lng,
       modificataManualmente: timbrature.modificataManualmente,
       noteModifica: timbrature.noteModifica,
+      tipoAccesso: timbrature.tipoAccesso,
+      motivoRemoto: timbrature.motivoRemoto,
       modifiedBy: timbrature.modifiedBy,
       dipNome: utenti.nome,
       dipCognome: utenti.cognome,
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
     })
     .from(timbrature)
     .innerJoin(utenti, eq(timbrature.userId, utenti.id))
-    .innerJoin(sedi, eq(timbrature.sedeId, sedi.id))
+    .leftJoin(sedi, eq(timbrature.sedeId, sedi.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(timbrature.orario))
     .limit(500);
@@ -70,29 +72,41 @@ export async function POST(req: NextRequest) {
   if (!user) return unauthorized();
 
   const body = await req.json();
-  const { sedeId, tipo, lat, lng } = body;
+  const { sedeId, tipo, lat, lng, tipoAccesso, motivoRemoto } = body;
+  const isRemoto = tipoAccesso === "remoto";
 
-  if (!sedeId || !tipo || lat == null || lng == null) {
+  if (!tipo || lat == null || lng == null) {
     return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
   }
 
-  // Verifica che la sede esista
-  const [sede] = await db.select().from(sedi).where(eq(sedi.id, sedeId)).limit(1);
-  if (!sede) {
-    return NextResponse.json({ error: "Sede non trovata" }, { status: 404 });
-  }
+  const userId = parseInt(user.id);
 
-  // CONTROLLO GEOFENCE SERVER-SIDE
-  const distanza = calcolaDistanza(lat, lng, sede.lat, sede.lng);
-  if (distanza > sede.raggio) {
-    return NextResponse.json(
-      { error: "Posizione non autorizzata", distanza: Math.round(distanza), raggio: sede.raggio },
-      { status: 403 }
-    );
+  if (isRemoto) {
+    // Verifica che il dipendente abbia timbratura remota abilitata
+    const [dbUser] = await db.select({ timbraturaRemotaAbilitata: utenti.timbraturaRemotaAbilitata })
+      .from(utenti).where(eq(utenti.id, userId)).limit(1);
+    if (!dbUser?.timbraturaRemotaAbilitata) {
+      return NextResponse.json({ error: "Timbratura remota non autorizzata per questo account" }, { status: 403 });
+    }
+  } else {
+    // Timbratura in sede: verifica geofence
+    if (!sedeId) {
+      return NextResponse.json({ error: "Sede mancante" }, { status: 400 });
+    }
+    const [sede] = await db.select().from(sedi).where(eq(sedi.id, sedeId)).limit(1);
+    if (!sede) {
+      return NextResponse.json({ error: "Sede non trovata" }, { status: 404 });
+    }
+    const distanza = calcolaDistanza(lat, lng, sede.lat, sede.lng);
+    if (distanza > sede.raggio) {
+      return NextResponse.json(
+        { error: "Posizione non autorizzata", distanza: Math.round(distanza), raggio: sede.raggio },
+        { status: 403 }
+      );
+    }
   }
 
   // COOLDOWN SERVER-SIDE: rifiuta se ultima timbratura < 60 secondi fa
-  const userId = parseInt(user.id);
   const [ultima] = await db
     .select({ orario: timbrature.orario })
     .from(timbrature)
@@ -112,11 +126,13 @@ export async function POST(req: NextRequest) {
 
   const [nuova] = await db.insert(timbrature).values({
     userId,
-    sedeId,
+    sedeId: isRemoto ? null : sedeId,
     tipo,
     orario: new Date(),
     lat,
     lng,
+    tipoAccesso: isRemoto ? "remoto" : "sede",
+    motivoRemoto: isRemoto ? (motivoRemoto || null) : null,
   }).returning();
 
   return NextResponse.json(nuova, { status: 201 });

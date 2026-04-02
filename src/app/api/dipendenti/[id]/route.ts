@@ -24,7 +24,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const body = await req.json();
-  const { nome, cognome, email, telefono, ruolo, tipoContratto, oreSettimanali, dataAssunzione, attivo } = body;
+  const { nome, cognome, email, telefono, ruolo, tipoContratto, oreSettimanali, dataAssunzione, attivo, timbraturaRemotaAbilitata } = body;
 
   await db.update(utenti)
     .set({
@@ -37,6 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(oreSettimanali !== undefined && { oreSettimanali }),
       ...(dataAssunzione !== undefined && { dataAssunzione }),
       ...(attivo !== undefined && { attivo }),
+      ...(timbraturaRemotaAbilitata !== undefined && { timbraturaRemotaAbilitata }),
       updatedAt: new Date(),
     })
     .where(eq(utenti.id, parseInt(id)));

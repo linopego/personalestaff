@@ -20,6 +20,7 @@ interface Dipendente {
   oreSettimanali: number;
   dataAssunzione: string;
   attivo: boolean;
+  timbraturaRemotaAbilitata: boolean;
   oreMese: number;
   timbrature: { data: string; tipo: "Entrata" | "Uscita"; orario: string; sede: Sede }[];
   oreSett: number[];
@@ -42,138 +43,6 @@ const AVATAR_COLORS = [
   "bg-indigo-500/20 text-indigo-400",
 ];
 
-const initialDipendenti: Dipendente[] = [
-  {
-    id: 1, nome: "Marco", cognome: "Bianchi", email: "m.bianchi@presenzestaff.it", telefono: "339 1234567",
-    ruolo: "Responsabile sala", contratto: "Fisso", oreSettimanali: 40,
-    dataAssunzione: "2019-03-15", attivo: true, oreMese: 162,
-    timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "08:02", sede: "La Casa dei Gelsi" },
-      { data: "01/04", tipo: "Uscita", orario: "16:05", sede: "La Casa dei Gelsi" },
-      { data: "31/03", tipo: "Entrata", orario: "07:58", sede: "Tenuta Villa Peggy's" },
-      { data: "31/03", tipo: "Uscita", orario: "16:10", sede: "Tenuta Villa Peggy's" },
-      { data: "30/03", tipo: "Entrata", orario: "08:00", sede: "La Casa dei Gelsi" },
-    ],
-    oreSett: [40, 38, 41, 39, 40],
-  },
-  {
-    id: 2, nome: "Giulia", cognome: "Ferretti", email: "g.ferretti@presenzestaff.it", telefono: "347 2345678",
-    ruolo: "Barista", contratto: "Fisso", oreSettimanali: 40,
-    dataAssunzione: "2020-06-01", attivo: true, oreMese: 158,
-    timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "09:00", sede: "Tenuta Villa Peggy's" },
-      { data: "01/04", tipo: "Uscita", orario: "17:02", sede: "Tenuta Villa Peggy's" },
-      { data: "31/03", tipo: "Entrata", orario: "08:55", sede: "La Casa dei Gelsi" },
-      { data: "31/03", tipo: "Uscita", orario: "17:00", sede: "La Casa dei Gelsi" },
-      { data: "30/03", tipo: "Entrata", orario: "09:05", sede: "Studios Club / TooLate" },
-    ],
-    oreSett: [38, 40, 39, 40, 38],
-  },
-  {
-    id: 3, nome: "Alessandro", cognome: "Conti", email: "a.conti@presenzestaff.it", telefono: "333 3456789",
-    ruolo: "Cameriere", contratto: "Part-time", oreSettimanali: 24,
-    dataAssunzione: "2022-01-10", attivo: true, oreMese: 96,
-    timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "18:00", sede: "Studios Club / TooLate" },
-      { data: "01/04", tipo: "Uscita", orario: "00:05", sede: "Studios Club / TooLate" },
-      { data: "30/03", tipo: "Entrata", orario: "18:00", sede: "Studios Club / TooLate" },
-      { data: "30/03", tipo: "Uscita", orario: "00:10", sede: "Studios Club / TooLate" },
-      { data: "29/03", tipo: "Entrata", orario: "18:05", sede: "Tenuta Villa Peggy's" },
-    ],
-    oreSett: [24, 22, 24, 20, 24],
-  },
-  {
-    id: 4, nome: "Francesca", cognome: "Romano", email: "f.romano@presenzestaff.it", telefono: "340 4567890",
-    ruolo: "Cuoca", contratto: "Fisso", oreSettimanali: 40,
-    dataAssunzione: "2018-09-20", attivo: true, oreMese: 168,
-    timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "06:30", sede: "La Casa dei Gelsi" },
-      { data: "01/04", tipo: "Uscita", orario: "14:35", sede: "La Casa dei Gelsi" },
-      { data: "31/03", tipo: "Entrata", orario: "06:28", sede: "Tenuta Villa Peggy's" },
-      { data: "31/03", tipo: "Uscita", orario: "14:30", sede: "Tenuta Villa Peggy's" },
-      { data: "30/03", tipo: "Entrata", orario: "06:32", sede: "La Casa dei Gelsi" },
-    ],
-    oreSett: [42, 40, 41, 40, 42],
-  },
-  {
-    id: 5, nome: "Luca", cognome: "Moretti", email: "l.moretti@presenzestaff.it", telefono: "328 5678901",
-    ruolo: "DJ / Fonico", contratto: "A chiamata", oreSettimanali: 0,
-    dataAssunzione: "2023-04-01", attivo: true, oreMese: 48,
-    timbrature: [
-      { data: "30/03", tipo: "Entrata", orario: "22:00", sede: "Studios Club / TooLate" },
-      { data: "31/03", tipo: "Uscita", orario: "04:00", sede: "Studios Club / TooLate" },
-      { data: "29/03", tipo: "Entrata", orario: "22:30", sede: "Studios Club / TooLate" },
-      { data: "30/03", tipo: "Uscita", orario: "04:15", sede: "Studios Club / TooLate" },
-      { data: "23/03", tipo: "Entrata", orario: "22:00", sede: "Tenuta Villa Peggy's" },
-    ],
-    oreSett: [12, 0, 12, 6, 12],
-  },
-  {
-    id: 6, nome: "Sara", cognome: "Colombo", email: "s.colombo@presenzestaff.it", telefono: "349 6789012",
-    ruolo: "Cameriera", contratto: "Part-time", oreSettimanali: 20,
-    dataAssunzione: "2023-09-15", attivo: true, oreMese: 80,
-    timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "11:00", sede: "Tenuta Villa Peggy's" },
-      { data: "01/04", tipo: "Uscita", orario: "15:00", sede: "Tenuta Villa Peggy's" },
-      { data: "31/03", tipo: "Entrata", orario: "11:05", sede: "La Casa dei Gelsi" },
-      { data: "31/03", tipo: "Uscita", orario: "15:02", sede: "La Casa dei Gelsi" },
-      { data: "30/03", tipo: "Entrata", orario: "11:00", sede: "Tenuta Villa Peggy's" },
-    ],
-    oreSett: [20, 18, 20, 20, 16],
-  },
-  {
-    id: 7, nome: "Davide", cognome: "Ricci", email: "d.ricci@presenzestaff.it", telefono: "335 7890123",
-    ruolo: "Barman", contratto: "A chiamata", oreSettimanali: 0,
-    dataAssunzione: "2024-01-20", attivo: false, oreMese: 0,
-    timbrature: [
-      { data: "15/02", tipo: "Entrata", orario: "19:00", sede: "La Casa dei Gelsi" },
-      { data: "15/02", tipo: "Uscita", orario: "01:00", sede: "La Casa dei Gelsi" },
-      { data: "14/02", tipo: "Entrata", orario: "19:00", sede: "Studios Club / TooLate" },
-      { data: "14/02", tipo: "Uscita", orario: "01:05", sede: "Studios Club / TooLate" },
-      { data: "10/02", tipo: "Entrata", orario: "19:30", sede: "Tenuta Villa Peggy's" },
-    ],
-    oreSett: [0, 0, 0, 0, 0],
-  },
-  {
-    id: 8, nome: "Elena", cognome: "Galli", email: "e.galli@presenzestaff.it", telefono: "320 8901234",
-    ruolo: "Responsabile bar", contratto: "Fisso", oreSettimanali: 36,
-    dataAssunzione: "2021-11-01", attivo: true, oreMese: 144,
-    timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "20:00", sede: "Studios Club / TooLate" },
-      { data: "02/04", tipo: "Uscita", orario: "02:10", sede: "Studios Club / TooLate" },
-      { data: "31/03", tipo: "Entrata", orario: "20:00", sede: "Studios Club / TooLate" },
-      { data: "01/04", tipo: "Uscita", orario: "02:00", sede: "Studios Club / TooLate" },
-      { data: "29/03", tipo: "Entrata", orario: "20:05", sede: "La Casa dei Gelsi" },
-    ],
-    oreSett: [36, 34, 36, 36, 30],
-  },
-  {
-    id: 9, nome: "Andrea", cognome: "Marino", email: "a.marino@presenzestaff.it", telefono: "338 9012345",
-    ruolo: "Aiuto cuoco", contratto: "Part-time", oreSettimanali: 24,
-    dataAssunzione: "2024-06-10", attivo: true, oreMese: 92,
-    timbrature: [
-      { data: "01/04", tipo: "Entrata", orario: "10:00", sede: "La Casa dei Gelsi" },
-      { data: "01/04", tipo: "Uscita", orario: "16:00", sede: "La Casa dei Gelsi" },
-      { data: "31/03", tipo: "Entrata", orario: "10:05", sede: "Tenuta Villa Peggy's" },
-      { data: "31/03", tipo: "Uscita", orario: "16:00", sede: "Tenuta Villa Peggy's" },
-      { data: "30/03", tipo: "Entrata", orario: "10:00", sede: "La Casa dei Gelsi" },
-    ],
-    oreSett: [24, 22, 24, 24, 18],
-  },
-  {
-    id: 10, nome: "Chiara", cognome: "Greco", email: "c.greco@presenzestaff.it", telefono: "342 0123456",
-    ruolo: "Hostess", contratto: "A chiamata", oreSettimanali: 0,
-    dataAssunzione: "2025-02-01", attivo: true, oreMese: 32,
-    timbrature: [
-      { data: "30/03", tipo: "Entrata", orario: "18:30", sede: "Tenuta Villa Peggy's" },
-      { data: "30/03", tipo: "Uscita", orario: "00:30", sede: "Tenuta Villa Peggy's" },
-      { data: "29/03", tipo: "Entrata", orario: "18:00", sede: "Studios Club / TooLate" },
-      { data: "29/03", tipo: "Uscita", orario: "00:00", sede: "Studios Club / TooLate" },
-      { data: "23/03", tipo: "Entrata", orario: "18:30", sede: "La Casa dei Gelsi" },
-    ],
-    oreSett: [12, 6, 6, 0, 12],
-  },
-];
 
 /* ═══════════════════════════════════════════
    HELPERS
@@ -194,7 +63,7 @@ function emptyForm(): Omit<Dipendente, "id" | "oreMese" | "timbrature" | "oreSet
   return {
     nome: "", cognome: "", email: "", telefono: "", ruolo: "",
     contratto: "Fisso", oreSettimanali: 40,
-    dataAssunzione: "", attivo: true,
+    dataAssunzione: "", attivo: true, timbraturaRemotaAbilitata: false,
   };
 }
 
@@ -454,6 +323,7 @@ function TabDipendenti() {
           telefono: d.telefono ?? "", ruolo: d.tipoContratto === "Fisso" ? "Dipendente" : (d.tipoContratto as string),
           contratto: d.tipoContratto as TipoContratto, oreSettimanali: d.oreSettimanali,
           dataAssunzione: d.dataAssunzione ?? "", attivo: d.attivo,
+          timbraturaRemotaAbilitata: (d.timbraturaRemotaAbilitata as boolean) ?? false,
           oreMese: 0, timbrature: [], oreSett: [],
         })));
       }
@@ -494,6 +364,7 @@ function TabDipendenti() {
       nome: d.nome, cognome: d.cognome, email: d.email, telefono: d.telefono,
       ruolo: d.ruolo, contratto: d.contratto,
       oreSettimanali: d.oreSettimanali, dataAssunzione: d.dataAssunzione, attivo: d.attivo,
+      timbraturaRemotaAbilitata: d.timbraturaRemotaAbilitata ?? false,
     });
     setFormOpen(true);
   }
@@ -508,7 +379,7 @@ function TabDipendenti() {
           nome: form.nome, cognome: form.cognome, email: form.email,
           telefono: form.telefono, tipoContratto: form.contratto,
           oreSettimanali: form.oreSettimanali, dataAssunzione: form.dataAssunzione,
-          attivo: form.attivo,
+          attivo: form.attivo, timbraturaRemotaAbilitata: form.timbraturaRemotaAbilitata,
         }),
       });
     }
@@ -731,6 +602,24 @@ function TabDipendenti() {
                   <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.attivo ? "translate-x-5" : "translate-x-0"}`} />
                 </button>
                 <span className="text-sm text-text-muted">{form.attivo ? "Attivo" : "Disattivato"}</span>
+              </div>
+
+              {/* Permessi Speciali */}
+              <div className="border-t border-border mt-4 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Permessi Speciali</p>
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, timbraturaRemotaAbilitata: !form.timbraturaRemotaAbilitata })}
+                    className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${form.timbraturaRemotaAbilitata ? "bg-blue-600" : "bg-zinc-600"}`}
+                  >
+                    <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.timbraturaRemotaAbilitata ? "translate-x-5" : "translate-x-0"}`} />
+                  </button>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Timbratura remota abilitata</p>
+                    <p className="text-xs text-text-muted mt-0.5">Il dipendente potrà timbrare da qualsiasi posizione, utile per catering e trasferte</p>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-3 border-t border-border px-6 py-4">

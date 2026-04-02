@@ -40,6 +40,7 @@ export const utenti = pgTable("utenti", {
   avatarUrl: text("avatar_url"),
   metodoAccesso: varchar("metodo_accesso", { length: 10 }).notNull().default("email"), // "email" | "google"
   emailVerified: boolean("email_verified").notNull().default(false),
+  timbraturaRemotaAbilitata: boolean("timbratura_remota_abilitata").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -61,13 +62,15 @@ export const googleWhitelist = pgTable("google_whitelist", {
 export const timbrature = pgTable("timbrature", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => utenti.id),
-  sedeId: integer("sede_id").notNull().references(() => sedi.id),
+  sedeId: integer("sede_id").references(() => sedi.id), // nullable per timbrature remote
   tipo: varchar("tipo", { length: 10 }).notNull(), // "Entrata" | "Uscita"
   orario: timestamp("orario").notNull(),
   lat: doublePrecision("lat").notNull(),
   lng: doublePrecision("lng").notNull(),
   modificataManualmente: boolean("modificata_manualmente").notNull().default(false),
   noteModifica: text("note_modifica"),
+  tipoAccesso: varchar("tipo_accesso", { length: 10 }).notNull().default("sede"), // "sede" | "remoto"
+  motivoRemoto: text("motivo_remoto"),
   modifiedBy: integer("modified_by").references(() => utenti.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

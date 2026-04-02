@@ -17,6 +17,8 @@ interface TimbraturaStorico {
   lng: number;
   modificata: boolean;
   noteModifica?: string;
+  tipoAccesso?: string;
+  motivoRemoto?: string;
 }
 
 interface ApiTimbratura {
@@ -33,6 +35,8 @@ interface ApiTimbratura {
   dipNome: string;
   dipCognome: string;
   sedeNome: string;
+  tipoAccesso?: string;
+  motivoRemoto?: string | null;
 }
 
 interface GiornoData {
@@ -69,6 +73,8 @@ function transformApiTimbratura(t: ApiTimbratura): TimbraturaStorico {
     lng: t.lng,
     modificata: t.modificataManualmente,
     noteModifica: t.noteModifica ?? undefined,
+    tipoAccesso: t.tipoAccesso,
+    motivoRemoto: t.motivoRemoto ?? undefined,
   };
 }
 
@@ -434,33 +440,45 @@ function GiornoCard({ giorno, onDetail }: { giorno: GiornoData; onDetail: (t: Ti
         <p className="text-sm text-text-muted py-1">Giorno libero</p>
       ) : (
         <div className="space-y-1.5">
-          {timbrature.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => onDetail(t)}
-              className="flex w-full items-center gap-3 rounded-xl bg-sidebar-bg px-3.5 py-3 min-h-[48px] active:bg-white/5 active:scale-[0.98] transition-all text-left"
-            >
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                t.tipo === "Entrata" ? "bg-green-500/15" : "bg-red-500/15"
-              }`}>
-                {t.tipo === "Entrata" ? (
-                  <ArrowDownIcon className="h-4 w-4 text-green-400" />
-                ) : (
-                  <ArrowUpIcon className="h-4 w-4 text-red-400" />
+          {timbrature.map((t) => {
+            const isRemoto = t.tipoAccesso === "remoto";
+            return (
+              <div key={t.id}>
+                <button
+                  onClick={() => onDetail(t)}
+                  className="flex w-full items-center gap-3 rounded-xl bg-sidebar-bg px-3.5 py-3 min-h-[48px] active:bg-white/5 active:scale-[0.98] transition-all text-left"
+                >
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                    t.tipo === "Entrata" ? "bg-green-500/15" : "bg-red-500/15"
+                  }`}>
+                    {t.tipo === "Entrata" ? (
+                      <ArrowDownIcon className="h-4 w-4 text-green-400" />
+                    ) : (
+                      <ArrowUpIcon className="h-4 w-4 text-red-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold text-foreground tabular-nums">{t.orario}</p>
+                      {isRemoto && (
+                        <span className="rounded bg-zinc-500/20 px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 uppercase">Remoto</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-muted truncate">{isRemoto ? "Posizione remota" : t.sede}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {t.modificata && (
+                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">MOD</span>
+                    )}
+                    <ChevronRightIcon className="h-4 w-4 text-text-muted" />
+                  </div>
+                </button>
+                {isRemoto && t.motivoRemoto && (
+                  <p className="mt-0.5 px-3.5 text-xs italic text-text-muted">{t.motivoRemoto}</p>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-semibold text-foreground tabular-nums">{t.orario}</p>
-                <p className="text-xs text-text-muted truncate">{t.sede}</p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {t.modificata && (
-                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">MOD</span>
-                )}
-                <ChevronRightIcon className="h-4 w-4 text-text-muted" />
-              </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
