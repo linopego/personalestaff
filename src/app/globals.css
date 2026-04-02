@@ -32,29 +32,11 @@
 }
 
 body {
-  background: var(--sidebar-bg);
+  background: var(--background);
   color: var(--foreground);
 }
 
-/* PWA: cover the home indicator area on iPhone — only on staff pages with bottom nav */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  body::after {
-    content: "";
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: env(safe-area-inset-bottom, 0px);
-    background: var(--sidebar-bg);
-    z-index: 39;
-    pointer-events: none;
-  }
-  /* Nascondi nell'admin e nel login */
-  body:has(.admin-layout)::after,
-  body:has(.login-page)::after {
-    display: none;
-  }
-}
+/* PWA bottom area handled by nav padding */
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
