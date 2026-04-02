@@ -25,6 +25,7 @@ function LoginContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{ email?: boolean; password?: boolean }>({});
+  const [showAdminForm, setShowAdminForm] = useState(false);
 
   // Se l'utente è già loggato, redirect
   if (!loading && user) {
@@ -79,95 +80,11 @@ function LoginContent() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">PresenzApp</h1>
-          <p className="mt-2 text-base text-text-muted">Gestione presenze semplice ed efficiente</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Creazioni S.R.L.</h1>
+          <p className="mt-2 text-base text-text-muted">Gestione presenze del personale</p>
         </div>
 
-        {/* ── Form ── */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Errore globale */}
-          {error && (
-            <div className="rounded-2xl bg-red-500/10 border border-red-500/25 px-4 py-3.5 animate-fade-in">
-              <p className="text-sm font-medium text-red-400">{error}</p>
-            </div>
-          )}
-
-          {/* Email */}
-          <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
-              Email aziendale
-            </label>
-            <input
-              id="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setFieldErrors((p) => ({ ...p, email: false })); setError(""); }}
-              placeholder="esempio@azienda.it"
-              className={fieldErrors.email ? inputErr : inputOk}
-            />
-            {fieldErrors.email && (
-              <p className="mt-1.5 text-sm text-red-400 animate-fade-in">Inserisci la tua email aziendale</p>
-            )}
-          </div>
-
-          {/* Password */}
-          <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                type={showPw ? "text" : "password"}
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setFieldErrors((p) => ({ ...p, password: false })); setError(""); }}
-                placeholder="••••••••"
-                className={`${fieldErrors.password ? inputErr : inputOk} pr-14`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-xl text-text-muted active:bg-white/5 transition-colors"
-                tabIndex={-1}
-                aria-label={showPw ? "Nascondi password" : "Mostra password"}
-              >
-                {showPw ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-              </button>
-            </div>
-            {fieldErrors.password && (
-              <p className="mt-1.5 text-sm text-red-400 animate-fade-in">Inserisci la password</p>
-            )}
-          </div>
-
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="mt-2 w-full rounded-2xl bg-accent py-4 text-base font-bold text-white min-h-[56px] active:bg-accent-hover active:scale-[0.98] transition-all disabled:opacity-70 disabled:active:scale-100 flex items-center justify-center gap-2"
-          >
-            {submitting ? (
-              <>
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>Accesso in corso...</span>
-              </>
-            ) : (
-              "Accedi"
-            )}
-          </button>
-        </form>
-
-        {/* ── Divider ── */}
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-sm text-text-muted">oppure</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
-
-        {/* ── Google Sign In ── */}
+        {/* ── Google Sign In (principale) ── */}
         <button
           onClick={() => signIn("google", { callbackUrl: "/staff/timbra" })}
           className="w-full flex items-center justify-center gap-3 rounded-2xl border border-zinc-300 bg-white py-4 text-base font-semibold text-zinc-800 min-h-[56px] active:bg-zinc-50 active:scale-[0.98] transition-all"
@@ -186,10 +103,66 @@ function LoginContent() {
           Accesso riservato al personale autorizzato.
         </p>
 
-        {/* ── Admin credentials ── */}
-        <div className="mt-6 rounded-2xl border border-border bg-card-bg p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">Accesso Admin</p>
-          <p className="text-xs font-mono text-foreground">admin@azienda.it / Admin2024</p>
+        {/* ── Admin toggle ── */}
+        <div className="mt-8">
+          <button
+            onClick={() => setShowAdminForm(!showAdminForm)}
+            className="w-full text-center text-xs text-text-muted/50 py-2"
+          >
+            {showAdminForm ? "Chiudi" : "Accesso amministratore"}
+          </button>
+
+          {showAdminForm && (
+            <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-2xl border border-border bg-card-bg p-4">
+              {error && (
+                <div className="rounded-xl bg-red-500/10 border border-red-500/25 px-3 py-2 animate-fade-in">
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              )}
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                placeholder="Email"
+                className={inputOk}
+              />
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                  placeholder="Password"
+                  className={`${inputOk} pr-14`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex h-12 w-12 items-center justify-center rounded-xl text-text-muted"
+                  tabIndex={-1}
+                >
+                  {showPw ? <EyeOffIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+                </button>
+              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white min-h-[48px] active:bg-accent-hover active:scale-[0.98] transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span>Accesso...</span>
+                  </>
+                ) : (
+                  "Accedi"
+                )}
+              </button>
+            </form>
+          )}
         </div>
 
         {/* ── Footer ── */}
