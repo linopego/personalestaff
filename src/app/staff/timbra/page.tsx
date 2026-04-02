@@ -100,9 +100,12 @@ export default function TimbraPage() {
         }
       }).catch(() => {});
   }, []);
-  const entrata = timbrature.find((t) => t.tipo === "Entrata");
-  const uscita = timbrature.find((t) => t.tipo === "Uscita");
-  const turnoAperto = entrata && !uscita;
+  // L'ultima timbratura determina il prossimo tipo
+  const ultimaTimbratura = timbrature.length > 0 ? timbrature[timbrature.length - 1] : null;
+  const turnoAperto = ultimaTimbratura?.tipo === "Entrata";
+  // Per il riquadro turno corrente: ultimo turno aperto (ultima entrata senza uscita dopo)
+  const ultimaEntrata = [...timbrature].reverse().find((t) => t.tipo === "Entrata");
+  const uscitaDopoEntrata = ultimaEntrata ? timbrature.find((t) => t.tipo === "Uscita" && t.timestamp > ultimaEntrata.timestamp) : null;
 
   // Modale
   const [showModal, setShowModal] = useState(false);
@@ -234,7 +237,7 @@ export default function TimbraPage() {
   }
 
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
-  const canTimbra = risultato?.inSede && !(entrata && uscita);
+  const canTimbra = !!risultato?.inSede;
 
   return (
     <div className="flex flex-col gap-4">
@@ -262,7 +265,7 @@ export default function TimbraPage() {
       {geoStatus === "unsupported" && <GeoUnsupported />}
       {geoStatus === "denied" && <GeoDenied onRetry={rilevaPos} errorMsg={geoError} />}
       {geoStatus === "ready" && risultato && !risultato.inSede && (
-        <GeoFuoriSede risultato={risultato} turnoCompleto={!!(entrata && uscita)} />
+        <GeoFuoriSede risultato={risultato} />
       )}
       {geoStatus === "ready" && risultato?.inSede && (
         <GeoInSede
@@ -276,37 +279,40 @@ export default function TimbraPage() {
       {/* ── Stato turno ── */}
       <div className="rounded-2xl border border-border bg-card-bg p-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Turno di oggi</p>
-        {!entrata && (
+        {timbrature.length === 0 && (
           <p className="text-base text-text-muted">Nessuna timbratura oggi</p>
         )}
-        {entrata && !uscita && (
+        {ultimaEntrata && !uscitaDopoEntrata && (
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-muted">Entrata</p>
-              <p className="text-xl font-bold text-green-400 tabular-nums">{entrata.orario.slice(0, 5)}</p>
-              <p className="text-xs text-text-muted mt-0.5">{entrata.sede}</p>
+              <p className="text-xl font-bold text-green-400 tabular-nums">{ultimaEntrata.orario.slice(0, 5)}</p>
+              <p className="text-xs text-text-muted mt-0.5">{ultimaEntrata.sede}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-text-muted">In corso da</p>
-              <p className="text-xl font-bold text-accent tabular-nums">{calcolaDurata(entrata.timestamp)}</p>
+              <p className="text-xl font-bold text-accent tabular-nums">{calcolaDurata(ultimaEntrata.timestamp)}</p>
             </div>
           </div>
         )}
-        {entrata && uscita && (
+        {ultimaEntrata && uscitaDopoEntrata && (
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-text-muted">Entrata</p>
-              <p className="text-lg font-bold text-green-400 tabular-nums">{entrata.orario.slice(0, 5)}</p>
+              <p className="text-sm text-text-muted">Ultimo turno</p>
+              <p className="text-lg font-bold text-green-400 tabular-nums">{ultimaEntrata.orario.slice(0, 5)}</p>
             </div>
             <div className="text-center">
               <p className="text-sm text-text-muted">Totale</p>
-              <p className="text-lg font-bold text-foreground tabular-nums">{calcolaDurata(entrata.timestamp, uscita.timestamp)}</p>
+              <p className="text-lg font-bold text-foreground tabular-nums">{calcolaDurata(ultimaEntrata.timestamp, uscitaDopoEntrata.timestamp)}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-text-muted">Uscita</p>
-              <p className="text-lg font-bold text-red-400 tabular-nums">{uscita.orario.slice(0, 5)}</p>
+              <p className="text-lg font-bold text-red-400 tabular-nums">{uscitaDopoEntrata.orario.slice(0, 5)}</p>
             </div>
           </div>
+        )}
+        {timbrature.length > 0 && (
+          <p className="text-xs text-text-muted mt-2">{timbrature.length} timbrature oggi</p>
         )}
       </div>
 
@@ -467,7 +473,7 @@ function GeoDenied({ onRetry, errorMsg }: { onRetry: () => void; errorMsg?: stri
   );
 }
 
-function GeoFuoriSede({ risultato, turnoCompleto }: { risultato: RisultatoGeo; turnoCompleto: boolean }) {
+function GeoFuoriSede({ risultato }: { risultato: RisultatoGeo }) {
   return (
     <div className="rounded-2xl bg-red-500/[0.06] border border-red-500/20 p-6 text-center">
       <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
@@ -485,7 +491,7 @@ function GeoFuoriSede({ risultato, turnoCompleto }: { risultato: RisultatoGeo; t
         disabled
         className="mt-6 w-full rounded-xl bg-zinc-700/50 py-5 text-base font-semibold text-zinc-500 min-h-[56px] cursor-not-allowed"
       >
-        {turnoCompleto ? "TURNO COMPLETATO" : "TIMBRATURA NON DISPONIBILE"}
+        TIMBRATURA NON DISPONIBILE
       </button>
     </div>
   );
