@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
    TYPES
    ═══════════════════════════════════════════ */
 
-type Tab = "generale" | "utenti" | "notifiche" | "sicurezza";
+type Tab = "generale" | "utenti" | "notifiche" | "sicurezza" | "visibilita";
 type TipoContratto = "Fisso" | "Part-time" | "A chiamata";
 
 interface Utente {
@@ -80,12 +80,14 @@ export default function ImpostazioniPage() {
         <button className={tabCls(tab === "utenti")} onClick={() => setTab("utenti")}>Utenti e Ruoli</button>
         <button className={tabCls(tab === "notifiche")} onClick={() => setTab("notifiche")}>Notifiche</button>
         <button className={tabCls(tab === "sicurezza")} onClick={() => setTab("sicurezza")}>Sicurezza</button>
+        <button className={tabCls(tab === "visibilita")} onClick={() => setTab("visibilita")}>Visibilità Ore</button>
       </div>
 
       {tab === "generale" && <TabGenerale />}
       {tab === "utenti" && <TabUtenti />}
       {tab === "notifiche" && <TabNotifiche />}
       {tab === "sicurezza" && <TabSicurezza />}
+      {tab === "visibilita" && <TabVisibilita />}
     </div>
   );
 }
@@ -633,6 +635,284 @@ function TabSicurezza() {
 }
 
 /* ═══════════════════════════════════════════
+   TAB VISIBILITÀ ORE
+   ═══════════════════════════════════════════ */
+
+const MESI_VIS = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+];
+
+function formatDataVis(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getDate()} ${MESI_VIS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+interface VisibilitaEntry {
+  id: number;
+  userId: number | null;
+  dataReset: string;
+  note: string | null;
+}
+
+interface Dipendente {
+  id: number;
+  nome: string;
+  cognome: string;
+  tipoContratto: TipoContratto;
+}
+
+function TabVisibilita() {
+  const inputCls = "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
+
+  // Global visibility state
+  const [visEntries, setVisEntries] = useState<VisibilitaEntry[]>([]);
+  const [dipendenti, setDipendenti] = useState<Dipendente[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTarget, setModalTarget] = useState<{ userId: number | null; nome: string } | null>(null);
+  const [modalDataReset, setModalDataReset] = useState("");
+  const [modalNote, setModalNote] = useState("");
+  const [modalSaving, setModalSaving] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [visRes, dipRes] = await Promise.all([
+        fetch("/api/admin/visibilita"),
+        fetch("/api/dipendenti"),
+      ]);
+      if (visRes.ok) setVisEntries(await visRes.json());
+      if (dipRes.ok) setDipendenti(await dipRes.json());
+    } catch { /* */ }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const globalEntry = visEntries.find((e) => e.userId === null) ?? null;
+
+  async function handleDelete(id: number) {
+    await fetch(`/api/admin/visibilita/${id}`, { method: "DELETE" });
+    fetchData();
+  }
+
+  function openModal(userId: number | null, nome: string) {
+    setModalTarget({ userId, nome });
+    setModalDataReset("");
+    setModalNote("");
+    setModalOpen(true);
+  }
+
+  async function handleModalConfirm() {
+    if (!modalTarget || !modalDataReset) return;
+    setModalSaving(true);
+    try {
+      await fetch("/api/admin/visibilita", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: modalTarget.userId, dataReset: modalDataReset, note: modalNote }),
+      });
+      setModalOpen(false);
+      fetchData();
+    } catch { /* */ }
+    setModalSaving(false);
+  }
+
+  const contrattoVisBadge = (c: TipoContratto) => {
+    switch (c) {
+      case "Fisso": return "bg-blue-500/10 text-blue-400";
+      case "Part-time": return "bg-amber-500/10 text-amber-400";
+      case "A chiamata": return "bg-purple-500/10 text-purple-400";
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>;
+  }
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      {/* ── Global Reset Card ── */}
+      <div className="rounded-xl border border-border bg-card-bg p-6">
+        <h3 className="mb-4 text-base font-semibold text-foreground">Reset globale</h3>
+        {globalEntry ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-orange-500/10 text-orange-400">
+                Filtro attivo
+              </span>
+              <span className="text-sm text-foreground">
+                Dal <strong>{formatDataVis(globalEntry.dataReset)}</strong>
+              </span>
+            </div>
+            <button
+              onClick={() => handleDelete(globalEntry.id)}
+              className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              Rimuovi filtro globale
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-500/10 text-green-400">
+                Nessun filtro
+              </span>
+              <span className="text-sm text-text-muted">Tutto lo storico è visibile al personale</span>
+            </div>
+            <button
+              onClick={() => openModal(null, "globale")}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
+            >
+              Imposta reset globale
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Per-employee filters ── */}
+      <div className="rounded-xl border border-border bg-card-bg overflow-hidden">
+        <div className="border-b border-border px-6 py-4">
+          <h3 className="text-base font-semibold text-foreground">Filtri individuali</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-text-muted">
+                <th className="px-5 py-3 font-medium">Dipendente</th>
+                <th className="px-5 py-3 font-medium">Contratto</th>
+                <th className="px-5 py-3 font-medium">Visibilità</th>
+                <th className="px-5 py-3 font-medium">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {dipendenti.length === 0 && (
+                <tr><td colSpan={4} className="px-5 py-8 text-center text-sm text-text-muted">Nessun dipendente trovato.</td></tr>
+              )}
+              {dipendenti.map((dip) => {
+                const entry = visEntries.find((e) => e.userId === dip.id) ?? null;
+                return (
+                  <tr key={dip.id} className="border-b border-border last:border-0 hover:bg-white/[0.02] transition-colors">
+                    <td className="px-5 py-3 text-sm font-medium text-foreground">{dip.nome} {dip.cognome}</td>
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${contrattoVisBadge(dip.tipoContratto)}`}>
+                        {dip.tipoContratto}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3">
+                      {entry ? (
+                        <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-orange-500/10 text-orange-400">
+                          Filtro dal {formatDataVis(entry.dataReset)}
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-500/10 text-green-400">
+                          Storico completo
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openModal(dip.id, `${dip.nome} ${dip.cognome}`)}
+                          className="rounded-lg p-1.5 text-text-muted hover:text-foreground hover:bg-white/5 transition-colors"
+                          title="Imposta / modifica filtro"
+                        >
+                          <PenIcon className="h-4 w-4" />
+                        </button>
+                        {entry && (
+                          <button
+                            onClick={() => handleDelete(entry.id)}
+                            className="rounded-lg p-1.5 text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Rimuovi filtro"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Info note ── */}
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 text-sm text-blue-300">
+        <p className="font-medium mb-1">Come funziona la visibilità</p>
+        <p className="text-blue-300/80 text-xs leading-relaxed">
+          I filtri individuali hanno la priorità sul filtro globale. Se un dipendente ha un filtro individuale, viene applicato quello;
+          altrimenti si applica il filtro globale (se presente). Se non esiste nessun filtro, tutto lo storico è visibile.
+          I dati non vengono mai cancellati e rimangono sempre accessibili all&apos;admin per la contabilità.
+        </p>
+      </div>
+
+      {/* ── Modal ── */}
+      {modalOpen && modalTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card-bg p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-semibold text-foreground">
+                {modalTarget.userId === null ? "Reset globale" : `Reset per ${modalTarget.nome}`}
+              </h3>
+              <button onClick={() => setModalOpen(false)} className="rounded-lg p-1.5 text-text-muted hover:text-foreground hover:bg-white/5 transition-colors">
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Data reset</label>
+                <input
+                  type="date"
+                  value={modalDataReset}
+                  onChange={(e) => setModalDataReset(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Note</label>
+                <textarea
+                  value={modalNote}
+                  onChange={(e) => setModalNote(e.target.value)}
+                  rows={3}
+                  className={`${inputCls} resize-none`}
+                  placeholder="Motivazione opzionale..."
+                />
+              </div>
+
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-xs text-yellow-300 leading-relaxed">
+                I dati non vengono cancellati e restano sempre accessibili all&apos;admin per la contabilità.
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-muted hover:text-foreground transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleModalConfirm}
+                disabled={!modalDataReset || modalSaving}
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {modalSaving ? "Salvataggio…" : "Conferma"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
    ICONS
    ═══════════════════════════════════════════ */
 
@@ -648,6 +928,14 @@ function XIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function TrashIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
     </svg>
   );
 }

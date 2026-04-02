@@ -4,6 +4,7 @@ import { timbrature, sedi, utenti } from "@/db/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { getSession, unauthorized } from "@/lib/api-auth";
 import { calcolaDistanza } from "@/lib/geo";
+import { getVisibilityDate } from "@/lib/visibility";
 
 export async function GET(req: NextRequest) {
   const user = await getSession();
@@ -18,9 +19,13 @@ export async function GET(req: NextRequest) {
 
   const conditions = [];
 
-  // Staff vede solo le proprie
+  // Staff vede solo le proprie + filtro visibilità
   if (user.ruolo !== "admin") {
     conditions.push(eq(timbrature.userId, parseInt(user.id)));
+    const visDate = await getVisibilityDate(parseInt(user.id));
+    if (visDate) {
+      conditions.push(gte(timbrature.orario, visDate));
+    }
   } else if (userId) {
     conditions.push(eq(timbrature.userId, parseInt(userId)));
   }

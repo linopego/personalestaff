@@ -103,3 +103,13 @@ export const logAccessi = pgTable("log_accessi", {
   esito: varchar("esito", { length: 20 }).notNull().default("Successo"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/* ── Visibilità Ore (filtro staff) ── */
+export const visibilitySettings = pgTable("visibility_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => utenti.id), // null = globale, valorizzato = specifico per dipendente
+  dataReset: timestamp("data_reset").notNull(),
+  note: text("note"),
+  creataDa: integer("creata_da").notNull().references(() => utenti.id),
+  creataAt: timestamp("creata_at").defaultNow().notNull(),
+});

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
+import VisibilityBanner from "@/components/visibility-banner";
 import {
   BarChart,
   Bar,
@@ -116,6 +117,9 @@ export default function OrePage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-xl font-bold text-foreground">Le Mie Ore</h1>
+      </div>
+      <VisibilityBanner />
+      <div>
         <p className="mt-0.5 text-sm text-text-muted">{contratto === "Fisso" ? "Dipendente Fisso" : contratto} — {oreContrattuali}h/settimana</p>
       </div>
 
