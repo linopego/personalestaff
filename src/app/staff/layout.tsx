@@ -39,7 +39,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex h-full flex-col bg-background">
       {/* ── Header ── */}
-      <header className="flex items-center justify-between border-b border-border bg-sidebar-bg px-4 py-3 sm:px-6">
+      <header className="flex items-center justify-between border-b border-border bg-sidebar-bg px-4 sm:px-6" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

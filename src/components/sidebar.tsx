@@ -36,7 +36,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         }`}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-3 px-5 border-b border-border">
+        <div className="flex items-center gap-3 px-5 border-b border-border" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
