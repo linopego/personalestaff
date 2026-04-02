@@ -94,7 +94,8 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       </main>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-stretch border-t border-border bg-sidebar-bg sm:hidden safe-bottom">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-sidebar-bg sm:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        <div className="flex items-stretch">
         {NAV_ITEMS.map((item) => {
           const active = pathname === item.href || (item.href !== "/staff/timbra" && pathname.startsWith(item.href));
           const isActive = item.href === "/staff/timbra" ? pathname === "/staff/timbra" || pathname === "/staff" : active;
@@ -111,6 +112,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             </Link>
           );
         })}
+        </div>
       </nav>
     </div>
   );
