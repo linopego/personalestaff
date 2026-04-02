@@ -111,7 +111,9 @@ export default function TimbraPage() {
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cooldown, setCooldown] = useState(false);
   const successTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const cooldownTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Stato errore geo per messaggi specifici
   const [geoError, setGeoError] = useState<string | null>(null);
@@ -236,12 +238,15 @@ export default function TimbraPage() {
     setShowModal(false);
     setSubmitting(false);
     setShowSuccess(true);
+    setCooldown(true);
     if (successTimeout.current) clearTimeout(successTimeout.current);
     successTimeout.current = setTimeout(() => setShowSuccess(false), 2500);
+    if (cooldownTimeout.current) clearTimeout(cooldownTimeout.current);
+    cooldownTimeout.current = setTimeout(() => setCooldown(false), 3000);
   }
 
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
-  const canTimbra = !!risultato?.inSede;
+  const canTimbra = !!risultato?.inSede && !cooldown;
 
   return (
     <div className="flex flex-col gap-4">
@@ -381,7 +386,7 @@ export default function TimbraPage() {
 
       {/* ═══ FEEDBACK SUCCESSO ═══ */}
       {showSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="rounded-2xl bg-card-bg border border-green-500/30 px-8 py-6 shadow-2xl animate-fade-in text-center">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-green-500/15">
               <CheckIcon className="h-8 w-8 text-green-400" />
