@@ -10,7 +10,7 @@ export default function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
   const { user, logout } = useAuth();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-sidebar-bg px-4 lg:px-6">
+    <header className="flex items-center justify-between border-b border-border bg-sidebar-bg px-4 lg:px-6" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
       {/* Mobile menu button */}
       <button
         onClick={onMenuToggle}
