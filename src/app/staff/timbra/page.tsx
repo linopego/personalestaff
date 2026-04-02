@@ -111,7 +111,9 @@ export default function TimbraPage() {
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [turnoChiuso, setTurnoChiuso] = useState(false); // blocca dopo uscita fino a tap esplicito
+  const [turnoChiuso, setTurnoChiuso] = useState(false);
+  const [nuovoTurnoDelay, setNuovoTurnoDelay] = useState(false); // delay dopo "Inizia nuovo turno"
+  const [modalReady, setModalReady] = useState(false); // delay prima che Conferma sia attivo
   const successTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Stato errore geo per messaggi specifici
@@ -243,7 +245,7 @@ export default function TimbraPage() {
   }
 
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
-  const canTimbra = !!risultato?.inSede && !turnoChiuso;
+  const canTimbra = !!risultato?.inSede && !turnoChiuso && !nuovoTurnoDelay;
 
   return (
     <div className="flex flex-col gap-4">
@@ -280,7 +282,11 @@ export default function TimbraPage() {
           canTimbra={canTimbra!}
           turnoChiuso={turnoChiuso}
           onTimbra={() => setShowModal(true)}
-          onNuovoTurno={() => setTurnoChiuso(false)}
+          onNuovoTurno={() => {
+            setTurnoChiuso(false);
+            setNuovoTurnoDelay(true);
+            setTimeout(() => setNuovoTurnoDelay(false), 1500);
+          }}
         />
       )}
 
@@ -337,51 +343,16 @@ export default function TimbraPage() {
       )}
 
       {/* ═══ MODALE CONFERMA ═══ */}
-      {showModal && risultato?.sede && coords && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
-          <div
-            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border-t sm:border border-border bg-card-bg animate-slide-up"
-          >
-            {/* Handle bar mobile */}
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-              <div className="h-1 w-10 rounded-full bg-border" />
-            </div>
-
-            <div className="px-6 py-5 space-y-4">
-              <h2 className="text-lg font-bold text-foreground text-center">
-                Conferma {tipoTimbra}
-              </h2>
-
-              <div className="rounded-xl bg-sidebar-bg p-4 space-y-2.5">
-                <InfoRow label="Tipo" value={`Timbratura ${tipoTimbra}`} valueColor={tipoTimbra === "Entrata" ? "text-green-400" : "text-red-400"} />
-                <InfoRow label="Sede" value={risultato.sede.nome} />
-                <InfoRow label="Ora" value={formatOraBreve(now)} />
-                <InfoRow label="GPS" value={`${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`} small />
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 rounded-xl border border-border py-4 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[56px]"
-                >
-                  Annulla
-                </button>
-                <button
-                  onClick={confermaTimbra}
-                  disabled={submitting}
-                  className={`flex-1 rounded-xl py-4 text-base font-semibold text-white active:scale-[0.97] transition-all min-h-[56px] disabled:opacity-50 ${
-                    tipoTimbra === "Entrata"
-                      ? "bg-green-600 active:bg-green-700"
-                      : "bg-red-600 active:bg-red-700"
-                  }`}
-                >
-                  Conferma
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modale: delay prima che Conferma sia attivo */}
+      {showModal && risultato?.sede && coords && <TimbraModal
+        tipoTimbra={tipoTimbra}
+        sede={risultato.sede.nome}
+        ora={formatOraBreve(now)}
+        coords={coords}
+        submitting={submitting}
+        onConfirm={confermaTimbra}
+        onCancel={() => setShowModal(false)}
+      />}
 
       {/* ═══ FEEDBACK SUCCESSO ═══ */}
       {showSuccess && (
@@ -578,6 +549,53 @@ function GeoInSede({
 /* ═══════════════════════════════════════════
    SUB COMPONENTS
    ═══════════════════════════════════════════ */
+
+function TimbraModal({ tipoTimbra, sede, ora, coords, submitting, onConfirm, onCancel }: {
+  tipoTimbra: "Entrata" | "Uscita"; sede: string; ora: string;
+  coords: { lat: number; lng: number }; submitting: boolean;
+  onConfirm: () => void; onCancel: () => void;
+}) {
+  const [ready, setReady] = useState(false);
+
+  // Pulsante Conferma attivo solo dopo 1.5 secondi
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60">
+      <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border-t sm:border border-border bg-card-bg animate-slide-up">
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <h2 className="text-lg font-bold text-foreground text-center">Conferma {tipoTimbra}</h2>
+          <div className="rounded-xl bg-sidebar-bg p-4 space-y-2.5">
+            <InfoRow label="Tipo" value={`Timbratura ${tipoTimbra}`} valueColor={tipoTimbra === "Entrata" ? "text-green-400" : "text-red-400"} />
+            <InfoRow label="Sede" value={sede} />
+            <InfoRow label="Ora" value={ora} />
+            <InfoRow label="GPS" value={`${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`} small />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onCancel} className="flex-1 rounded-xl border border-border py-4 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[56px]">
+              Annulla
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={!ready || submitting}
+              className={`flex-1 rounded-xl py-4 text-base font-semibold text-white transition-all min-h-[56px] disabled:opacity-40 ${
+                ready ? "active:scale-[0.97]" : ""
+              } ${tipoTimbra === "Entrata" ? "bg-green-600" : "bg-red-600"}`}
+            >
+              {!ready ? "Attendi..." : submitting ? "Invio..." : "Conferma"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function InfoRow({ label, value, valueColor, small }: { label: string; value: string; valueColor?: string; small?: boolean }) {
   return (
