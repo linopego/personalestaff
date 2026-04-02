@@ -37,7 +37,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full admin-layout">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AdminHeader onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />

@@ -36,7 +36,7 @@ body {
   color: var(--foreground);
 }
 
-/* PWA: cover the home indicator area on iPhone */
+/* PWA: cover the home indicator area on iPhone — only on staff pages with bottom nav */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   body::after {
     content: "";
@@ -47,6 +47,12 @@ body {
     height: env(safe-area-inset-bottom, 0px);
     background: var(--sidebar-bg);
     z-index: 39;
+    pointer-events: none;
+  }
+  /* Nascondi nell'admin e nel login */
+  body:has(.admin-layout)::after,
+  body:has(.login-page)::after {
+    display: none;
   }
 }
 
