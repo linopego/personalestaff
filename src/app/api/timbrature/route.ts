@@ -86,8 +86,27 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // COOLDOWN SERVER-SIDE: rifiuta se ultima timbratura < 60 secondi fa
+  const userId = parseInt(user.id);
+  const [ultima] = await db
+    .select({ orario: timbrature.orario })
+    .from(timbrature)
+    .where(eq(timbrature.userId, userId))
+    .orderBy(desc(timbrature.orario))
+    .limit(1);
+
+  if (ultima) {
+    const secondiFaUltima = (Date.now() - new Date(ultima.orario).getTime()) / 1000;
+    if (secondiFaUltima < 60) {
+      return NextResponse.json(
+        { error: `Devi attendere ${Math.ceil(60 - secondiFaUltima)} secondi prima di timbrare di nuovo` },
+        { status: 429 }
+      );
+    }
+  }
+
   const [nuova] = await db.insert(timbrature).values({
-    userId: parseInt(user.id),
+    userId,
     sedeId,
     tipo,
     orario: new Date(),
