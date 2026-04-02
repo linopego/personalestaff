@@ -70,7 +70,7 @@ function LoginContent() {
   const inputErr = `${inputBase} border-red-500 focus:border-red-500 focus:ring-red-500/30`;
 
   return (
-    <div className="flex min-h-full flex-col items-center justify-center bg-background px-5 py-8" style={{ paddingTop: "max(2rem, env(safe-area-inset-top))", paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
+    <div className="flex min-h-full flex-col items-center justify-center bg-background px-5 py-8 login-page" style={{ paddingTop: "max(2rem, env(safe-area-inset-top))", paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}>
       <div className="w-full max-w-sm">
         {/* ── Logo & Brand ── */}
         <div className="mb-10 flex flex-col items-center text-center">
