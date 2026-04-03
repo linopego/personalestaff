@@ -7,8 +7,15 @@ const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
 const MANSIONE_COLORS: Record<string, string> = { barista: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", sala: "bg-blue-500/15 text-blue-400", guardaroba: "bg-purple-500/15 text-purple-400" };
 
-interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
+interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; statoConferma: string; motivoRifiuto: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnazioni: Assegnazione[]; }
+
+const CONFERMA_BADGE: Record<string, string> = {
+  in_attesa: "bg-amber-500/15 text-amber-400",
+  confermato: "bg-green-500/15 text-green-400",
+  rifiutato: "bg-red-500/15 text-red-400",
+};
+const CONFERMA_LABEL: Record<string, string> = { in_attesa: "In attesa", confermato: "Confermato", rifiutato: "Rifiutato" };
 interface Dip { id: number; nome: string; cognome: string; tipoContratto: string; }
 
 function fmtData(iso: string) { const d = new Date(iso + "T00:00:00"); return `${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}`; }
@@ -111,6 +118,11 @@ export default function EventoDetailPage() {
           <div className="rounded-xl border border-border bg-card-bg overflow-hidden">
             <div className="border-b border-border px-4 py-3">
               <p className="text-lg font-bold text-foreground">{evento.assegnazioni.length} assegnati</p>
+              <div className="flex gap-2 mt-1">
+                <span className="text-xs text-green-400">{evento.assegnazioni.filter(a => a.statoConferma === "confermato").length} confermati</span>
+                <span className="text-xs text-amber-400">{evento.assegnazioni.filter(a => a.statoConferma === "in_attesa").length} in attesa</span>
+                {evento.assegnazioni.some(a => a.statoConferma === "rifiutato") && <span className="text-xs text-red-400">{evento.assegnazioni.filter(a => a.statoConferma === "rifiutato").length} rifiutati</span>}
+              </div>
             </div>
             <div className="divide-y divide-border">
               {evento.assegnazioni.length === 0 && <p className="px-4 py-8 text-center text-text-muted">Nessun dipendente assegnato.</p>}
@@ -120,7 +132,10 @@ export default function EventoDetailPage() {
                     <div className="flex items-center gap-2">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">{a.dipNome[0]}{a.dipCognome[0]}</div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">{a.dipNome} {a.dipCognome}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-foreground">{a.dipNome} {a.dipCognome}</p>
+                          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${CONFERMA_BADGE[a.statoConferma] || CONFERMA_BADGE.in_attesa}`}>{CONFERMA_LABEL[a.statoConferma] || "In attesa"}</span>
+                        </div>
                         <div className="flex items-center gap-2 text-xs text-text-muted">
                           {(a.orarioInizio || a.orarioFine) && <span className="font-mono">{a.orarioInizio||"—"} – {a.orarioFine||"—"}</span>}
                           {a.mansione && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${MANSIONE_COLORS[a.mansione.toLowerCase()] || "bg-zinc-500/15 text-zinc-400"}`}>{a.mansione}</span>}
@@ -129,6 +144,7 @@ export default function EventoDetailPage() {
                     </div>
                     <button onClick={() => removeAssegnazione(a.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
                   </div>
+                  {a.motivoRifiuto && <p className="text-xs text-red-400 italic mt-1 ml-10">Motivo: {a.motivoRifiuto}</p>}
                   {a.note && <p className="text-xs text-text-muted italic mt-1 ml-10">{a.note}</p>}
                 </div>
               ))}

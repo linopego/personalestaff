@@ -50,6 +50,13 @@
       "when": 1775202997761,
       "tag": "0006_milky_mantis",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775223888629,
+      "tag": "0007_fearless_jack_flag",
+      "breakpoints": true
     }
   ]
 }
