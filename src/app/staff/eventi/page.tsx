@@ -7,6 +7,19 @@ const GIORNI_CORTI = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
 
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; }
 
+const SEDE_BG: Record<string, string> = {
+  "La Casa dei Gelsi": "bg-amber-500/10 border-amber-500/25",
+  "Tenuta Villa Peggy's": "bg-emerald-500/10 border-emerald-500/25",
+  "Studios Club / TooLate": "bg-blue-500/10 border-blue-500/25",
+};
+const SEDE_TEXT: Record<string, string> = {
+  "La Casa dei Gelsi": "text-amber-400",
+  "Tenuta Villa Peggy's": "text-emerald-400",
+  "Studios Club / TooLate": "text-blue-400",
+};
+function sedeStyle(sede: string) { return SEDE_BG[sede] || "bg-zinc-500/10 border-zinc-500/25"; }
+function sedeTextColor(sede: string) { return SEDE_TEXT[sede] || "text-zinc-400"; }
+
 function isoD(d: Date) { return d.toISOString().slice(0, 10); }
 function getMonday(d: Date) { const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.getFullYear(), d.getMonth(), diff); }
 function dayOfWeek(iso: string) { return new Date(iso + "T00:00:00").getDay(); }
@@ -82,8 +95,8 @@ export default function StaffEventiPage() {
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {g.eventi.map(e => (
-                    <div key={e.id} className={`rounded-lg px-2.5 py-1.5 text-xs ${e.stato === "confermato" ? "bg-green-500/10 border border-green-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
-                      <p className="font-semibold text-foreground">{e.nome}</p>
+                    <div key={e.id} className={`rounded-lg px-2.5 py-1.5 text-xs border ${sedeStyle(e.sede)}`}>
+                      <p className={`font-semibold ${sedeTextColor(e.sede)}`}>{e.nome}</p>
                       <p className="text-text-muted">{e.sede} {e.oraInizio && `· ${e.oraInizio}`} · {e.assegnati}p</p>
                     </div>
                   ))}
