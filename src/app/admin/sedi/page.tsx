@@ -37,7 +37,7 @@ export default function SediPage() {
     try {
       const [sediRes, timbRes] = await Promise.all([
         fetch("/api/sedi"),
-        fetch(`/api/timbrature?dataInizio=${new Date().toISOString().slice(0, 10)}&dataFine=${new Date().toISOString().slice(0, 10)}`),
+        fetch(`/api/timbrature?dataInizio=${new Date().toLocaleDateString("sv-SE")}&dataFine=${new Date().toLocaleDateString("sv-SE")}`),
       ]);
       const sediData = sediRes.ok ? await sediRes.json() : [];
       const timbData = timbRes.ok ? await timbRes.json() : [];

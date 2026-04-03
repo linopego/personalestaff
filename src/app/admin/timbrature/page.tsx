@@ -67,11 +67,11 @@ interface Sede {
 function defaultDataInizio() {
   const d = new Date();
   d.setDate(d.getDate() - 13);
-  return d.toISOString().slice(0, 10);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
 function defaultDataFine() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 /* ═══════════════════════════════════════════
@@ -80,7 +80,7 @@ function defaultDataFine() {
 
 function fromApi(r: ApiTimbratura): Timbratura {
   const dt = new Date(r.orario);
-  const data = dt.toISOString().slice(0, 10);
+  const data = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
   const hh = String(dt.getHours()).padStart(2, "0");
   const mm = String(dt.getMinutes()).padStart(2, "0");
   return {
