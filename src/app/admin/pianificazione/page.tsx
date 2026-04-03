@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 
-interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; sedeId: number|null; sedeAltro: string|null; }
+interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnati: number; sedeId: number|null; sedeAltro: string|null; }
 
 const SEDE_CARD: Record<string, string> = { "La Casa dei Gelsi": "bg-amber-500/10 border-amber-500/25", "Tenuta Villa Peggy's": "bg-emerald-500/10 border-emerald-500/25", "Studios Club / TooLate": "bg-blue-500/10 border-blue-500/25" };
 const SEDE_TXT: Record<string, string> = { "La Casa dei Gelsi": "text-amber-400", "Tenuta Villa Peggy's": "text-emerald-400", "Studios Club / TooLate": "text-blue-400" };
@@ -33,7 +33,7 @@ export default function PianificazionePage() {
   // Evento form
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number|null>(null);
-  const [form, setForm] = useState({ nome: "", data: "", oraInizio: "", oraFine: "", sedeId: 0, sedeAltro: "", descrizione: "", stato: "bozza", sedeType: "sede" as "sede"|"altro" });
+  const [form, setForm] = useState({ nome: "", data: "", oraInizio: "", oraFine: "", sedeId: 0, sedeAltro: "", descrizione: "", sedeType: "sede" as "sede"|"altro" });
 
   useEffect(() => { fetch("/api/sedi").then(r => r.json()).then(setSedi).catch(() => {}); }, []);
 
@@ -52,13 +52,13 @@ export default function PianificazionePage() {
 
   function openAdd(data: string) {
     setEditId(null);
-    setForm({ nome: "", data, oraInizio: "", oraFine: "", sedeId: sedi[0]?.id || 0, sedeAltro: "", descrizione: "", stato: "bozza", sedeType: "sede" });
+    setForm({ nome: "", data, oraInizio: "", oraFine: "", sedeId: sedi[0]?.id || 0, sedeAltro: "", descrizione: "", sedeType: "sede" });
     setShowForm(true);
   }
 
   async function saveForm() {
     if (!form.nome || !form.data) { alert("Nome e data obbligatori"); return; }
-    const body = { nome: form.nome, data: form.data, oraInizio: form.oraInizio || null, oraFine: form.oraFine || null, sedeId: form.sedeType === "sede" ? form.sedeId : null, sedeAltro: form.sedeType === "altro" ? form.sedeAltro : null, descrizione: form.descrizione || null, stato: form.stato };
+    const body = { nome: form.nome, data: form.data, oraInizio: form.oraInizio || null, oraFine: form.oraFine || null, sedeId: form.sedeType === "sede" ? form.sedeId : null, sedeAltro: form.sedeType === "altro" ? form.sedeAltro : null, descrizione: form.descrizione || null, stato: "confermato" };
     const url = editId ? `/api/eventi/${editId}` : "/api/eventi";
     const res = await fetch(url, { method: editId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || "Errore"); return; }
@@ -137,10 +137,7 @@ export default function PianificazionePage() {
                     <p className="text-lg font-bold text-foreground">{e.nome}</p>
                     <p className="text-sm text-text-muted">{e.sede}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-text-muted">{e.assegnati}p</span>
-                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${e.stato === "confermato" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{e.stato}</span>
-                  </div>
+                  <span className="text-sm text-text-muted">{e.assegnati}p</span>
                 </div>
                 {(e.oraInizio || e.oraFine) && <p className="text-2xl font-bold text-foreground tabular-nums">{e.oraInizio || "—"} – {e.oraFine || "—"}</p>}
               </Link>
