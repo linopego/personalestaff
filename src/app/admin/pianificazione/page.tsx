@@ -3,33 +3,20 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 
-/* ═══════════════════════════════════════════
-   TYPES
-   ═══════════════════════════════════════════ */
-
-interface Assegnazione { id: number; turnoId: number; userId: number; mansione: string | null; dipNome: string; dipCognome: string; }
-interface Turno { id: number; data: string; sedeId: number; areaOperativa: string; orarioInizio: string; orarioFine: string; note: string | null; stato: string; sedeNome: string; assegnazioni: Assegnazione[]; }
-interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; sedeId: number|null; }
-interface Dip { id: number; nome: string; cognome: string; tipoContratto: string; attivo: boolean; }
+interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; sedeId: number|null; sedeAltro: string|null; }
 interface Sede { id: number; nome: string; }
 
-const AREE = ["sala", "bar", "cassa", "guardaroba", "altro"];
-const AREA_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400", altro: "bg-zinc-500/15 text-zinc-400" };
 const GIORNI = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 
 function isoD(d: Date) { return d.toISOString().slice(0, 10); }
 function getMonday(d: Date) { const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.getFullYear(), d.getMonth(), diff); }
-
-/* ═══════════════════════════════════════════
-   COMPONENT
-   ═══════════════════════════════════════════ */
+function fmtDataCorta(iso: string) { const d = new Date(iso + "T00:00:00"); return `${d.getDate()} ${MESI[d.getMonth()].slice(0,3)}`; }
 
 export default function PianificazionePage() {
   const [tab, setTab] = useState<"settimana" | "giorno">("settimana");
-  const [turni, setTurni] = useState<Turno[]>([]);
   const [eventi, setEventi] = useState<Evento[]>([]);
   const [sedi, setSedi] = useState<Sede[]>([]);
-  const [dipendenti, setDipendenti] = useState<Dip[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -37,56 +24,51 @@ export default function PianificazionePage() {
   const sunday = useMemo(() => { const s = new Date(monday); s.setDate(s.getDate() + 6); return s; }, [monday]);
 
   const [selectedDate, setSelectedDate] = useState(isoD(new Date()));
-  const [filtroSede, setFiltroSede] = useState("");
 
-  // Turno form
+  // Evento form
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ data: "", sedeId: 0, areaOperativa: "sala", orarioInizio: "09:00", orarioFine: "17:00", note: "", stato: "bozza" });
-  const [assignTurno, setAssignTurno] = useState<Turno | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<Turno | null>(null);
-  const [confirmConferma, setConfirmConferma] = useState<Turno | null>(null);
+  const [editId, setEditId] = useState<number|null>(null);
+  const [form, setForm] = useState({ nome: "", data: "", oraInizio: "", oraFine: "", sedeId: 0, sedeAltro: "", descrizione: "", stato: "bozza", sedeType: "sede" as "sede"|"altro" });
 
   useEffect(() => { fetch("/api/sedi").then(r => r.json()).then(setSedi).catch(() => {}); }, []);
-  useEffect(() => { fetch("/api/dipendenti").then(r => r.json()).then(d => setDipendenti(d.filter((x: Dip) => x.attivo))).catch(() => {}); }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchEventi = useCallback(async () => {
     setLoading(true);
     const dataInizio = tab === "settimana" ? isoD(monday) : selectedDate;
     const dataFine = tab === "settimana" ? isoD(sunday) : selectedDate;
     try {
-      const [turniRes, eventiRes] = await Promise.all([
-        fetch(`/api/turni?dataInizio=${dataInizio}&dataFine=${dataFine}`),
-        fetch(`/api/eventi?dataInizio=${dataInizio}&dataFine=${dataFine}`),
-      ]);
-      if (turniRes.ok) setTurni(await turniRes.json());
-      if (eventiRes.ok) setEventi(await eventiRes.json());
+      const res = await fetch(`/api/eventi?dataInizio=${dataInizio}&dataFine=${dataFine}`);
+      if (res.ok) setEventi(await res.json());
     } catch {}
     setLoading(false);
   }, [tab, monday, sunday, selectedDate]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchEventi(); }, [fetchEventi]);
 
-  // Turno CRUD
-  function openAdd(data: string, sedeId: number) { setEditId(null); setForm({ data, sedeId, areaOperativa: "sala", orarioInizio: "09:00", orarioFine: "17:00", note: "", stato: "bozza" }); setShowForm(true); }
-  function openEdit(t: Turno) { setEditId(t.id); setForm({ data: t.data, sedeId: t.sedeId, areaOperativa: t.areaOperativa, orarioInizio: t.orarioInizio, orarioFine: t.orarioFine, note: t.note || "", stato: t.stato }); setShowForm(true); }
-  async function saveForm() {
-    const url = editId ? `/api/turni/${editId}` : "/api/turni";
-    const res = await fetch(url, { method: editId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || "Errore"); return; }
-    setShowForm(false); fetchData();
+  function openAdd(data: string) {
+    setEditId(null);
+    setForm({ nome: "", data, oraInizio: "", oraFine: "", sedeId: sedi[0]?.id || 0, sedeAltro: "", descrizione: "", stato: "bozza", sedeType: "sede" });
+    setShowForm(true);
   }
-  async function deleteTurno() { if (!confirmDelete) return; await fetch(`/api/turni/${confirmDelete.id}`, { method: "DELETE" }); setConfirmDelete(null); fetchData(); }
-  async function confermaTurno() { if (!confirmConferma) return; await fetch(`/api/turni/${confirmConferma.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stato: "confermato" }) }); setConfirmConferma(null); fetchData(); }
-  async function addAssegnazione(turnoId: number, userId: number) { const res = await fetch(`/api/turni/${turnoId}/assegnazioni`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId }) }); if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || "Errore"); return; } fetchData(); }
-  async function removeAssegnazione(turnoId: number, assegnazioneId: number) { await fetch(`/api/turni/${turnoId}/assegnazioni?assegnazioneId=${assegnazioneId}`, { method: "DELETE" }); fetchData(); }
 
-  const fmtPeriod = `${monday.getDate()}/${monday.getMonth() + 1} – ${sunday.getDate()}/${sunday.getMonth() + 1}/${sunday.getFullYear()}`;
+  async function saveForm() {
+    if (!form.nome || !form.data) { alert("Nome e data obbligatori"); return; }
+    const body = { nome: form.nome, data: form.data, oraInizio: form.oraInizio || null, oraFine: form.oraFine || null, sedeId: form.sedeType === "sede" ? form.sedeId : null, sedeAltro: form.sedeType === "altro" ? form.sedeAltro : null, descrizione: form.descrizione || null, stato: form.stato };
+    const url = editId ? `/api/eventi/${editId}` : "/api/eventi";
+    const res = await fetch(url, { method: editId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.error || "Errore"); return; }
+    setShowForm(false); fetchEventi();
+  }
+
+  const oggi = isoD(new Date());
+  const fmtPeriod = `Lun ${fmtDataCorta(isoD(monday))} — Dom ${fmtDataCorta(isoD(sunday))} ${sunday.getFullYear()}`;
+  const inputCls = "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2.5 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
 
   return (
     <div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">Pianificazione</h1>
+        <button onClick={() => openAdd(tab === "giorno" ? selectedDate : oggi)} className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">+ Nuovo Evento</button>
       </div>
 
       <div className="mb-4 flex gap-2">
@@ -99,62 +81,39 @@ export default function PianificazionePage() {
       ) : tab === "settimana" ? (
         <>
           <div className="mb-4 flex items-center gap-3">
-            <button onClick={() => setWeekOffset(p => p - 1)} className="rounded-lg border border-border p-1.5 text-text-muted hover:text-foreground">◀</button>
-            <span className="text-sm font-medium text-foreground min-w-[160px] text-center">{fmtPeriod}</span>
-            <button onClick={() => setWeekOffset(p => p + 1)} className="rounded-lg border border-border p-1.5 text-text-muted hover:text-foreground">▶</button>
+            <button onClick={() => setWeekOffset(p => p - 1)} className="rounded-lg border border-border p-2 text-text-muted hover:text-foreground transition-colors">◀</button>
+            <span className="text-sm font-semibold text-foreground flex-1 text-center">{fmtPeriod}</span>
+            <button onClick={() => setWeekOffset(p => p + 1)} className="rounded-lg border border-border p-2 text-text-muted hover:text-foreground transition-colors">▶</button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className="p-2 text-xs text-text-muted font-medium text-left w-32">Sede / Evento</th>
-                  {GIORNI.map((g, i) => { const d = new Date(monday); d.setDate(d.getDate() + i); return <th key={g} className="p-2 text-xs text-text-muted font-medium text-center">{g} {d.getDate()}/{d.getMonth() + 1}</th>; })}
-                </tr>
-              </thead>
-              <tbody>
-                {/* Righe sedi (turni) */}
-                {sedi.map(sede => (
-                  <tr key={sede.id} className="border-t border-border">
-                    <td className="p-2 text-sm font-medium text-foreground align-top">{sede.nome}</td>
-                    {GIORNI.map((_, i) => {
-                      const d = new Date(monday); d.setDate(d.getDate() + i); const dayStr = isoD(d);
-                      const dayTurni = turni.filter(t => t.data === dayStr && t.sedeId === sede.id);
-                      return (
-                        <td key={i} className="p-1 align-top min-w-[100px]">
-                          {dayTurni.map(t => (
-                            <button key={t.id} onClick={() => openEdit(t)} className={`w-full mb-1 rounded-lg p-1.5 text-[10px] text-left transition-colors ${t.stato === "confermato" ? "bg-green-500/10 border border-green-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
-                              <div className="font-semibold text-foreground">{t.orarioInizio}-{t.orarioFine}</div>
-                              <div className="text-text-muted">{t.areaOperativa} · {t.assegnazioni.length}p</div>
-                            </button>
-                          ))}
-                          <button onClick={() => openAdd(dayStr, sede.id)} className="w-full rounded-lg border border-dashed border-border p-1 text-xs text-text-muted hover:text-accent hover:border-accent transition-colors">+</button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-                {/* Riga eventi */}
-                {eventi.length > 0 && (
-                  <tr className="border-t-2 border-accent/30">
-                    <td className="p-2 text-sm font-bold text-accent align-top">⭐ Eventi</td>
-                    {GIORNI.map((_, i) => {
-                      const d = new Date(monday); d.setDate(d.getDate() + i); const dayStr = isoD(d);
-                      const dayEventi = eventi.filter(e => e.data === dayStr);
-                      return (
-                        <td key={i} className="p-1 align-top min-w-[100px]">
-                          {dayEventi.map(e => (
-                            <Link key={e.id} href={`/admin/eventi/${e.id}`} className={`block w-full mb-1 rounded-lg p-1.5 text-[10px] text-left transition-colors ${e.stato === "confermato" ? "bg-purple-500/10 border border-purple-500/20" : "bg-purple-500/5 border border-purple-500/10"}`}>
-                              <div className="font-semibold text-purple-400">{e.nome}</div>
-                              <div className="text-text-muted">{e.oraInizio || "—"} · {e.assegnati}p</div>
-                            </Link>
-                          ))}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                )}
-              </tbody>
-            </table>
+
+          {/* Griglia settimanale */}
+          <div className="grid grid-cols-7 gap-2">
+            {GIORNI.map((g, i) => {
+              const d = new Date(monday); d.setDate(d.getDate() + i);
+              const dayStr = isoD(d);
+              const isOggi = dayStr === oggi;
+              const dayEventi = eventi.filter(e => e.data === dayStr);
+              return (
+                <div key={i} className={`rounded-xl border p-2 min-h-[120px] ${isOggi ? "border-accent/40 bg-accent/[0.03]" : "border-border bg-card-bg"}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className={`text-xs font-bold ${isOggi ? "text-accent" : "text-text-muted"}`}>{g}</p>
+                      <p className={`text-lg font-bold ${isOggi ? "text-accent" : "text-foreground"}`}>{d.getDate()}</p>
+                    </div>
+                    {isOggi && <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[8px] font-bold text-accent">OGGI</span>}
+                  </div>
+                  {dayEventi.map(e => (
+                    <Link key={e.id} href={`/admin/eventi/${e.id}`}
+                      className={`block w-full mb-1.5 rounded-lg p-2 text-left transition-all hover:brightness-110 ${e.stato === "confermato" ? "bg-green-500/10 border border-green-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
+                      <p className="text-xs font-semibold text-foreground truncate">{e.nome}</p>
+                      <p className="text-[10px] text-text-muted">{e.oraInizio || "—"} · {e.sede}</p>
+                      <p className="text-[10px] text-text-muted">{e.assegnati} persone</p>
+                    </Link>
+                  ))}
+                  <button onClick={() => openAdd(dayStr)} className="w-full rounded-lg border border-dashed border-border p-1.5 text-xs text-text-muted hover:text-accent hover:border-accent transition-colors mt-1">+ Aggiungi</button>
+                </div>
+              );
+            })}
           </div>
         </>
       ) : (
@@ -162,154 +121,57 @@ export default function PianificazionePage() {
         <>
           <div className="mb-4 flex gap-3 items-center flex-wrap">
             <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground" />
-            <select value={filtroSede} onChange={e => setFiltroSede(e.target.value)} className="rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground appearance-none cursor-pointer">
-              <option value="">Tutte le sedi</option>
-              {sedi.map(s => <option key={s.id} value={String(s.id)}>{s.nome}</option>)}
-            </select>
-            <button onClick={() => openAdd(selectedDate, sedi[0]?.id || 0)} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">+ Nuovo turno</button>
+            <button onClick={() => openAdd(selectedDate)} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">+ Nuovo evento</button>
           </div>
-
-          {/* Eventi del giorno */}
-          {eventi.filter(e => e.data === selectedDate).length > 0 && (
-            <div className="mb-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-purple-400 mb-2">⭐ Eventi</p>
-              <div className="space-y-2">
-                {eventi.filter(e => e.data === selectedDate).map(e => (
-                  <Link key={e.id} href={`/admin/eventi/${e.id}`} className="block rounded-xl border border-purple-500/20 bg-purple-500/[0.04] p-4 hover:bg-purple-500/[0.08] transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-base font-bold text-foreground">{e.nome}</p>
-                        <p className="text-sm text-text-muted">{e.sede} {e.oraInizio && `· ${e.oraInizio}`}{e.oraFine && ` – ${e.oraFine}`}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-text-muted">{e.assegnati}p</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${e.stato === "confermato" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{e.stato}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Turni del giorno */}
-          <p className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">Turni</p>
           <div className="space-y-3">
-            {turni.filter(t => !filtroSede || t.sedeId === parseInt(filtroSede)).map(t => (
-              <div key={t.id} className={`rounded-xl border p-4 ${t.stato === "confermato" ? "border-green-500/30 bg-green-500/[0.03]" : "border-amber-500/30 bg-amber-500/[0.03]"}`}>
+            {eventi.length === 0 && <p className="text-center text-text-muted py-12">Nessun evento per questo giorno.</p>}
+            {eventi.map(e => (
+              <Link key={e.id} href={`/admin/eventi/${e.id}`} className={`block rounded-xl border p-4 transition-all hover:brightness-105 ${e.stato === "confermato" ? "border-green-500/20 bg-green-500/[0.03]" : "border-amber-500/20 bg-amber-500/[0.03]"}`}>
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <p className="text-sm font-medium text-foreground">{t.sedeNome}</p>
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${AREA_COLORS[t.areaOperativa] || AREA_COLORS.altro}`}>{t.areaOperativa}</span>
+                    <p className="text-lg font-bold text-foreground">{e.nome}</p>
+                    <p className="text-sm text-text-muted">{e.sede}</p>
                   </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${t.stato === "confermato" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{t.stato === "confermato" ? "Confermato" : "Bozza"}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-text-muted">{e.assegnati}p</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${e.stato === "confermato" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{e.stato}</span>
+                  </div>
                 </div>
-                <p className="text-2xl font-bold text-foreground tabular-nums">{t.orarioInizio} – {t.orarioFine}</p>
-                {t.note && <p className="text-xs text-text-muted mt-1 italic">{t.note}</p>}
-                <div className="mt-3 border-t border-border pt-2">
-                  <p className="text-xs font-semibold text-text-muted mb-1">{t.assegnazioni.length} assegnati</p>
-                  {t.assegnazioni.map(a => (
-                    <div key={a.id} className="flex items-center justify-between py-1">
-                      <span className="text-sm text-foreground">{a.dipNome} {a.dipCognome}</span>
-                      <button onClick={() => removeAssegnazione(t.id, a.id)} className="text-red-400 text-xs">✕</button>
-                    </div>
-                  ))}
-                  <button onClick={() => setAssignTurno(t)} className="mt-1 text-xs text-accent font-medium">+ Assegna</button>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button onClick={() => openEdit(t)} className="rounded-lg border border-border px-3 py-1.5 text-xs text-text-muted hover:text-foreground">Modifica</button>
-                  {t.stato === "bozza" && (
-                    <>
-                      <button onClick={() => setConfirmConferma(t)} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs text-white">Conferma</button>
-                      <button onClick={() => setConfirmDelete(t)} className="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-400">Elimina</button>
-                    </>
-                  )}
-                </div>
-              </div>
+                {(e.oraInizio || e.oraFine) && <p className="text-2xl font-bold text-foreground tabular-nums">{e.oraInizio || "—"} – {e.oraFine || "—"}</p>}
+              </Link>
             ))}
-            {turni.filter(t => !filtroSede || t.sedeId === parseInt(filtroSede)).length === 0 && (
-              <p className="text-center text-text-muted py-8">Nessun turno per questo giorno.</p>
-            )}
           </div>
         </>
       )}
 
-      {/* ═══ MODALI ═══ */}
+      {/* ═══ MODALE NUOVO EVENTO ═══ */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowForm(false)}>
-          <div className="w-full max-w-md rounded-xl border border-border bg-card-bg shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-xl border border-border bg-card-bg shadow-2xl max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-lg font-semibold text-foreground">{editId ? "Modifica Turno" : "Nuovo Turno"}</h2>
+              <h2 className="text-lg font-semibold text-foreground">Nuovo Evento</h2>
               <button onClick={() => setShowForm(false)} className="text-text-muted hover:text-foreground text-xl">×</button>
             </div>
-            <div className="p-6 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-text-muted mb-1 block">Data</label><input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground" /></div>
-                <div><label className="text-xs text-text-muted mb-1 block">Sede</label><select value={form.sedeId} onChange={e => setForm({...form, sedeId: parseInt(e.target.value)})} className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground">{sedi.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}</select></div>
+            <div className="p-6 space-y-4">
+              <div><label className="text-xs text-text-muted mb-1 block">Nome evento *</label><input value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} placeholder="es. Catering Villa Rossi" className={inputCls} /></div>
+              <div className="grid grid-cols-3 gap-3">
+                <div><label className="text-xs text-text-muted mb-1 block">Data *</label><input type="date" value={form.data} onChange={e => setForm({...form, data: e.target.value})} className={inputCls} /></div>
+                <div><label className="text-xs text-text-muted mb-1 block">Ora inizio</label><input type="time" value={form.oraInizio} onChange={e => setForm({...form, oraInizio: e.target.value})} className={inputCls} /></div>
+                <div><label className="text-xs text-text-muted mb-1 block">Ora fine</label><input type="time" value={form.oraFine} onChange={e => setForm({...form, oraFine: e.target.value})} className={inputCls} /></div>
               </div>
-              <div><label className="text-xs text-text-muted mb-1 block">Area</label><select value={form.areaOperativa} onChange={e => setForm({...form, areaOperativa: e.target.value})} className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground">{AREE.map(a => <option key={a} value={a}>{a}</option>)}</select></div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="text-xs text-text-muted mb-1 block">Inizio</label><input type="time" value={form.orarioInizio} onChange={e => setForm({...form, orarioInizio: e.target.value})} className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground" /></div>
-                <div><label className="text-xs text-text-muted mb-1 block">Fine</label><input type="time" value={form.orarioFine} onChange={e => setForm({...form, orarioFine: e.target.value})} className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground" /></div>
+              <div>
+                <label className="text-xs text-text-muted mb-2 block">Sede</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {sedi.map(s => <button key={s.id} type="button" onClick={() => setForm({...form, sedeType: "sede", sedeId: s.id, sedeAltro: ""})} className={`rounded-lg px-3 py-2 text-xs font-medium border transition-colors ${form.sedeType === "sede" && form.sedeId === s.id ? "border-accent bg-accent/10 text-accent" : "border-border text-text-muted"}`}>{s.nome}</button>)}
+                  <button type="button" onClick={() => setForm({...form, sedeType: "altro", sedeId: 0})} className={`rounded-lg px-3 py-2 text-xs font-medium border transition-colors ${form.sedeType === "altro" ? "border-accent bg-accent/10 text-accent" : "border-border text-text-muted"}`}>Altro</button>
+                </div>
+                {form.sedeType === "altro" && <input value={form.sedeAltro} onChange={e => setForm({...form, sedeAltro: e.target.value})} placeholder="Indirizzo o nome location" className={inputCls} />}
               </div>
-              <div><label className="text-xs text-text-muted mb-1 block">Note</label><input value={form.note} onChange={e => setForm({...form, note: e.target.value})} placeholder="Opzionale" className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground placeholder:text-text-muted" /></div>
+              <div><label className="text-xs text-text-muted mb-1 block">Descrizione</label><textarea value={form.descrizione} onChange={e => setForm({...form, descrizione: e.target.value})} rows={2} className={`${inputCls} resize-none`} /></div>
             </div>
             <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
               <button onClick={() => setShowForm(false)} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted">Annulla</button>
-              <button onClick={saveForm} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white">Salva</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {assignTurno && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setAssignTurno(null)}>
-          <div className="w-full max-w-lg rounded-xl border border-border bg-card-bg shadow-2xl max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-lg font-semibold text-foreground">Assegna — {assignTurno.areaOperativa} {assignTurno.orarioInizio}-{assignTurno.orarioFine}</h2>
-              <button onClick={() => setAssignTurno(null)} className="text-text-muted text-xl">×</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <p className="text-xs font-semibold text-text-muted mb-2 uppercase">Assegnati ({assignTurno.assegnazioni.length})</p>
-              {assignTurno.assegnazioni.map(a => (
-                <div key={a.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <span className="text-sm text-foreground">{a.dipNome} {a.dipCognome}</span>
-                  <button onClick={() => removeAssegnazione(assignTurno.id, a.id)} className="text-xs text-red-400">Rimuovi</button>
-                </div>
-              ))}
-              <p className="text-xs font-semibold text-text-muted mt-4 mb-2 uppercase">Disponibili</p>
-              {dipendenti.filter(d => !assignTurno.assegnazioni.some(a => a.userId === d.id)).map(d => (
-                <div key={d.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <span className="text-sm text-foreground">{d.nome} {d.cognome}</span>
-                  <button onClick={() => addAssegnazione(assignTurno.id, d.id)} className="text-xs text-accent font-medium">+ Aggiungi</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setConfirmDelete(null)}>
-          <div className="w-full max-w-sm rounded-xl border border-border bg-card-bg p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-foreground">Elimina turno?</h3>
-            <p className="mt-2 text-sm text-text-muted">{confirmDelete.areaOperativa} ({confirmDelete.orarioInizio}-{confirmDelete.orarioFine})</p>
-            <div className="mt-4 flex justify-end gap-3">
-              <button onClick={() => setConfirmDelete(null)} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted">Annulla</button>
-              <button onClick={deleteTurno} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white">Elimina</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmConferma && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setConfirmConferma(null)}>
-          <div className="w-full max-w-sm rounded-xl border border-border bg-card-bg p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-foreground">Conferma turno?</h3>
-            <p className="mt-2 text-sm text-text-muted">Non potrà più essere eliminato.</p>
-            <div className="mt-4 flex justify-end gap-3">
-              <button onClick={() => setConfirmConferma(null)} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted">Annulla</button>
-              <button onClick={confermaTurno} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white">Conferma</button>
+              <button onClick={saveForm} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white">Crea evento</button>
             </div>
           </div>
         </div>
