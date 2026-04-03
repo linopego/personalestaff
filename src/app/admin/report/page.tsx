@@ -33,7 +33,7 @@ interface DipApi {
    HELPERS
    ═══════════════════════════════════════════ */
 
-function isoD(d: Date) { return d.toISOString().slice(0, 10); }
+function isoD(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 
 function getMonday(d: Date) {
   const day = d.getDay();

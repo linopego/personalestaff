@@ -23,8 +23,8 @@ export default function StaffTurniPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const oggi = new Date().toISOString().slice(0, 10);
-  const domani = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const oggi = new Date().toLocaleDateString("sv-SE");
+  const domani = new Date(Date.now() + 86400000).toLocaleDateString("sv-SE");
 
   const prossimi = useMemo(() => eventi.filter(e => e.data >= oggi).sort((a, b) => a.data.localeCompare(b.data)), [eventi, oggi]);
   const passati = useMemo(() => eventi.filter(e => e.data < oggi).sort((a, b) => b.data.localeCompare(a.data)), [eventi, oggi]);

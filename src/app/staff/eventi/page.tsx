@@ -20,7 +20,7 @@ const SEDE_TEXT: Record<string, string> = {
 function sedeStyle(sede: string) { return SEDE_BG[sede] || "bg-zinc-500/10 border-zinc-500/25"; }
 function sedeTextColor(sede: string) { return SEDE_TEXT[sede] || "text-zinc-400"; }
 
-function isoD(d: Date) { return d.toISOString().slice(0, 10); }
+function isoD(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
 function getMonday(d: Date) { const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.getFullYear(), d.getMonth(), diff); }
 function dayOfWeek(iso: string) { return new Date(iso + "T00:00:00").getDay(); }
 function fmtGiorno(iso: string) { const d = new Date(iso + "T00:00:00"); return `${d.getDate()} ${MESI[d.getMonth()].slice(0,3)}`; }

@@ -86,7 +86,7 @@ export default function TimbraPage() {
   // Timbrature di oggi dal DB
   const [timbrature, setTimbrature] = useState<Timbratura[]>([]);
   useEffect(() => {
-    const oggi = new Date().toISOString().slice(0, 10);
+    const oggi = new Date().toLocaleDateString("sv-SE");
     fetch(`/api/timbrature?dataInizio=${oggi}&dataFine=${oggi}`)
       .then(r => r.json())
       .then((data) => {
