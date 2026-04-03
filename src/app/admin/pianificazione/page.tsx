@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; sedeId: number|null; sedeAltro: string|null; }
+
+const SEDE_CARD: Record<string, string> = { "La Casa dei Gelsi": "bg-amber-500/10 border-amber-500/25", "Tenuta Villa Peggy's": "bg-emerald-500/10 border-emerald-500/25", "Studios Club / TooLate": "bg-blue-500/10 border-blue-500/25" };
+const SEDE_TXT: Record<string, string> = { "La Casa dei Gelsi": "text-amber-400", "Tenuta Villa Peggy's": "text-emerald-400", "Studios Club / TooLate": "text-blue-400" };
+function eCardStyle(sede: string) { return SEDE_CARD[sede] || "bg-zinc-500/10 border-zinc-500/25"; }
+function eTxtStyle(sede: string) { return SEDE_TXT[sede] || "text-zinc-400"; }
 interface Sede { id: number; nome: string; }
 
 const GIORNI = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
@@ -104,8 +109,8 @@ export default function PianificazionePage() {
                   </div>
                   {dayEventi.map(e => (
                     <Link key={e.id} href={`/admin/eventi/${e.id}`}
-                      className={`block w-full mb-1.5 rounded-lg p-2 text-left transition-all hover:brightness-110 ${e.stato === "confermato" ? "bg-green-500/10 border border-green-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
-                      <p className="text-xs font-semibold text-foreground truncate">{e.nome}</p>
+                      className={`block w-full mb-1.5 rounded-lg p-2 text-left transition-all hover:brightness-110 border ${eCardStyle(e.sede)}`}>
+                      <p className={`text-xs font-semibold truncate ${eTxtStyle(e.sede)}`}>{e.nome}</p>
                       <p className="text-[10px] text-text-muted">{e.oraInizio || "—"} · {e.sede}</p>
                       <p className="text-[10px] text-text-muted">{e.assegnati} persone</p>
                     </Link>
@@ -126,7 +131,7 @@ export default function PianificazionePage() {
           <div className="space-y-3">
             {eventi.length === 0 && <p className="text-center text-text-muted py-12">Nessun evento per questo giorno.</p>}
             {eventi.map(e => (
-              <Link key={e.id} href={`/admin/eventi/${e.id}`} className={`block rounded-xl border p-4 transition-all hover:brightness-105 ${e.stato === "confermato" ? "border-green-500/20 bg-green-500/[0.03]" : "border-amber-500/20 bg-amber-500/[0.03]"}`}>
+              <Link key={e.id} href={`/admin/eventi/${e.id}`} className={`block rounded-xl border p-4 transition-all hover:brightness-105 ${eCardStyle(e.sede)}`}>
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="text-lg font-bold text-foreground">{e.nome}</p>

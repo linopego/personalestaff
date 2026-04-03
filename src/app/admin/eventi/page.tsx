@@ -6,6 +6,9 @@ import Link from "next/link";
 const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
 
+const SEDE_BORDER: Record<string, string> = { "La Casa dei Gelsi": "border-amber-500/30", "Tenuta Villa Peggy's": "border-emerald-500/30", "Studios Club / TooLate": "border-blue-500/30" };
+function sedeBorder(sede: string) { return SEDE_BORDER[sede] || "border-border"; }
+
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; sedeId: number|null; sedeAltro: string|null; }
 interface Sede { id: number; nome: string; }
 
@@ -70,7 +73,7 @@ export default function EventiPage() {
           {eventi.map(e => {
             const passato = e.data < oggi;
             return (
-              <div key={e.id} className={`rounded-xl border p-4 transition-colors ${e.data === oggi ? "border-accent/40 bg-accent/[0.03]" : passato ? "border-border bg-card-bg opacity-60" : e.stato === "confermato" ? "border-green-500/20 bg-card-bg" : "border-amber-500/20 bg-card-bg"}`}>
+              <div key={e.id} className={`rounded-xl border p-4 transition-colors ${e.data === oggi ? "border-accent/40 bg-accent/[0.03]" : passato ? "border-border bg-card-bg opacity-60" : `${sedeBorder(e.sede)} bg-card-bg`}`}>
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="text-lg font-bold text-foreground">{e.nome}</p>
