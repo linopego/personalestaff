@@ -21,6 +21,7 @@ export async function GET() {
       orarioFine: eventiAssegnazioni.orarioFine,
       mansione: eventiAssegnazioni.mansione,
       note: eventiAssegnazioni.note,
+      statoConferma: eventiAssegnazioni.statoConferma,
     })
     .from(eventiAssegnazioni)
     .innerJoin(eventi, eq(eventiAssegnazioni.eventoId, eventi.id))

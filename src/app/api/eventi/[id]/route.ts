@@ -24,6 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     id: eventiAssegnazioni.id, userId: eventiAssegnazioni.userId,
     orarioInizio: eventiAssegnazioni.orarioInizio, orarioFine: eventiAssegnazioni.orarioFine,
     mansione: eventiAssegnazioni.mansione, note: eventiAssegnazioni.note,
+    statoConferma: eventiAssegnazioni.statoConferma, motivoRifiuto: eventiAssegnazioni.motivoRifiuto,
     dipNome: utenti.nome, dipCognome: utenti.cognome, tipoContratto: utenti.tipoContratto,
   }).from(eventiAssegnazioni).innerJoin(utenti, eq(eventiAssegnazioni.userId, utenti.id))
     .where(eq(eventiAssegnazioni.eventoId, parseInt(id)));
