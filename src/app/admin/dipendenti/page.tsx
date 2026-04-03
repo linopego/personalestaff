@@ -68,9 +68,9 @@ function emptyForm(): Omit<Dipendente, "id" | "oreMese" | "timbrature" | "oreSet
 }
 
 const SEDE_COLORS: Record<Sede, string> = {
-  "La Casa dei Gelsi": "text-blue-400",
-  "Tenuta Villa Peggy's": "text-amber-400",
-  "Studios Club / TooLate": "text-emerald-400",
+  "La Casa dei Gelsi": "text-amber-400",
+  "Tenuta Villa Peggy's": "text-emerald-400",
+  "Studios Club / TooLate": "text-blue-400",
 };
 
 /* ═══════════════════════════════════════════
