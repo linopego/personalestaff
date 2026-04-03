@@ -3,74 +3,103 @@
 import { useState, useEffect, useMemo } from "react";
 
 const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
-const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
-const MANSIONE_COLORS: Record<string, string> = { barista: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", sala: "bg-blue-500/15 text-blue-400", guardaroba: "bg-purple-500/15 text-purple-400" };
+const GIORNI_CORTI = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
 
-interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; }
+interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; }
 
-function fmtData(iso: string) { const d = new Date(iso + "T00:00:00"); return `${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}`; }
+function isoD(d: Date) { return d.toISOString().slice(0, 10); }
+function getMonday(d: Date) { const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.getFullYear(), d.getMonth(), diff); }
+function dayOfWeek(iso: string) { return new Date(iso + "T00:00:00").getDay(); }
+function fmtGiorno(iso: string) { const d = new Date(iso + "T00:00:00"); return `${d.getDate()} ${MESI[d.getMonth()].slice(0,3)}`; }
 
 export default function StaffEventiPage() {
   const [eventi, setEventi] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"prossimi"|"passati">("prossimi");
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const monday = useMemo(() => { const m = getMonday(new Date()); m.setDate(m.getDate() + weekOffset * 7); return m; }, [weekOffset]);
+  const sunday = useMemo(() => { const s = new Date(monday); s.setDate(s.getDate() + 6); return s; }, [monday]);
 
   useEffect(() => {
-    fetch("/api/eventi/miei").then(r => r.json()).then(setEventi).catch(() => {});
-    setLoading(false);
-  }, []);
+    setLoading(true);
+    const dataInizio = isoD(monday);
+    const dataFine = isoD(sunday);
+    // Usa l'API admin (che restituisce tutti gli eventi) ma dallo staff
+    // Per ora usiamo /api/eventi/miei che restituisce tutti (adatteremo)
+    fetch(`/api/eventi/tutti?dataInizio=${dataInizio}&dataFine=${dataFine}`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setEventi(data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [monday, sunday]);
 
-  const oggi = new Date().toISOString().slice(0, 10);
-  const domani = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const oggi = isoD(new Date());
+  const fmtPeriod = `${fmtGiorno(isoD(monday))} — ${fmtGiorno(isoD(sunday))} ${sunday.getFullYear()}`;
 
-  const prossimi = useMemo(() => eventi.filter(e => e.data >= oggi).sort((a, b) => a.data.localeCompare(b.data)), [eventi, oggi]);
-  const passati = useMemo(() => eventi.filter(e => e.data < oggi).sort((a, b) => b.data.localeCompare(a.data)), [eventi, oggi]);
-
-  const lista = tab === "prossimi" ? prossimi : passati;
+  // Raggruppa per giorno
+  const giorniSettimana = useMemo(() => {
+    const result: { data: string; label: string; isOggi: boolean; eventi: Evento[] }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday); d.setDate(d.getDate() + i);
+      const iso = isoD(d);
+      result.push({
+        data: iso,
+        label: `${GIORNI_CORTI[i]} ${d.getDate()} ${MESI[d.getMonth()].slice(0,3)}`,
+        isOggi: iso === oggi,
+        eventi: eventi.filter(e => e.data === iso),
+      });
+    }
+    return result;
+  }, [monday, eventi, oggi]);
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold text-foreground">I Miei Eventi</h1>
+      <h1 className="text-xl font-bold text-foreground">Eventi</h1>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={() => setTab("prossimi")} className={`rounded-xl py-3.5 text-base font-semibold min-h-[48px] transition-all active:scale-[0.97] ${tab === "prossimi" ? "bg-accent text-white" : "bg-card-bg border border-border text-text-muted"}`}>Prossimi</button>
-        <button onClick={() => setTab("passati")} className={`rounded-xl py-3.5 text-base font-semibold min-h-[48px] transition-all active:scale-[0.97] ${tab === "passati" ? "bg-accent text-white" : "bg-card-bg border border-border text-text-muted"}`}>Passati</button>
+      {/* Week nav */}
+      <div className="flex items-center justify-between rounded-xl bg-card-bg border border-border px-2 py-1">
+        <button onClick={() => setWeekOffset(v => v - 1)} className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all">
+          <ChevronLeftIcon className="h-5 w-5" />
+        </button>
+        <span className="text-sm font-semibold text-foreground">{fmtPeriod}</span>
+        <button onClick={() => setWeekOffset(v => v + 1)} className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all">
+          <ChevronRightIcon className="h-5 w-5" />
+        </button>
       </div>
 
-      {loading ? <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div> : (
-        <div className="flex flex-col gap-3">
-          {lista.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="text-5xl mb-4">⭐</div>
-              <p className="text-lg font-semibold text-foreground">{tab === "prossimi" ? "Nessun evento in programma" : "Nessun evento passato"}</p>
-            </div>
-          )}
-          {lista.map(e => (
-            <div key={e.id} className={`rounded-2xl border p-5 ${e.data === oggi ? "border-accent/40 bg-accent/[0.04]" : tab === "passati" ? "border-border bg-card-bg opacity-60" : "border-border bg-card-bg"}`}>
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="text-lg font-bold text-foreground">{e.nome}</p>
-                  <p className="text-sm text-text-muted">{fmtData(e.data)}</p>
-                </div>
-                <div className="flex gap-1.5">
-                  {e.data === oggi && <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent">OGGI</span>}
-                  {e.data === domani && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">DOMANI</span>}
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${e.stato === "confermato" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{e.stato === "confermato" ? "Confermato" : "In attesa"}</span>
-                </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {giorniSettimana.map(g => (
+            <div key={g.data} className={`rounded-xl border p-3 ${g.isOggi ? "border-accent/40 bg-accent/[0.03]" : "border-border bg-card-bg"}`}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <p className={`text-sm font-semibold ${g.isOggi ? "text-accent" : "text-foreground"}`}>{g.label}</p>
+                {g.isOggi && <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-accent">OGGI</span>}
               </div>
-              <p className="text-sm text-text-muted mb-2">{e.sede}</p>
-
-              {/* Orario dipendente */}
-              <p className="text-3xl font-bold text-foreground tabular-nums">
-                {e.orarioInizio || e.oraInizio || "—"} – {e.orarioFine || e.oraFine || "—"}
-              </p>
-
-              {e.mansione && <span className={`inline-flex mt-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${MANSIONE_COLORS[e.mansione.toLowerCase()] || "bg-zinc-500/15 text-zinc-400"}`}>{e.mansione}</span>}
-              {e.note && <p className="text-xs text-text-muted italic mt-2">{e.note}</p>}
+              {g.eventi.length === 0 ? (
+                <p className="text-xs text-text-muted">Nessun evento</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {g.eventi.map(e => (
+                    <div key={e.id} className={`rounded-lg px-2.5 py-1.5 text-xs ${e.stato === "confermato" ? "bg-green-500/10 border border-green-500/20" : "bg-amber-500/10 border border-amber-500/20"}`}>
+                      <p className="font-semibold text-foreground">{e.nome}</p>
+                      <p className="text-text-muted">{e.sede} {e.oraInizio && `· ${e.oraInizio}`} · {e.assegnati}p</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (<svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>);
+}
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (<svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>);
 }
