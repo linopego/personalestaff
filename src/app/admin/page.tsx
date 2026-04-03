@@ -57,9 +57,9 @@ interface DashboardData {
 /* ─── Constants ─── */
 
 const SEDI_COLORS: Record<string, string> = {
-  "La Casa dei Gelsi": "#3b82f6",
-  "Tenuta Villa Peggy's": "#f59e0b",
-  "Studios Club / TooLate": "#10b981",
+  "La Casa dei Gelsi": "#f59e0b",
+  "Tenuta Villa Peggy's": "#10b981",
+  "Studios Club / TooLate": "#3b82f6",
 };
 
 const SEDI_NAMES = Object.keys(SEDI_COLORS);

@@ -21,7 +21,7 @@ interface SedeData {
   oreMese: number;
 }
 
-const SEDE_ACCENTS = ["#3b82f6", "#f59e0b", "#10b981"];
+const SEDE_ACCENTS = ["#f59e0b", "#10b981", "#3b82f6"];
 
 /* ═══════════════════════════════════════════
    COMPONENT

@@ -14,9 +14,9 @@ type MainTab = "settimanale" | "mensile";
 type SubTab = "dipendente" | "sede";
 
 const SEDE_COLORS: Record<string, string> = {
-  "La Casa dei Gelsi": "#3b82f6",
-  "Tenuta Villa Peggy's": "#f59e0b",
-  "Studios Club / TooLate": "#10b981",
+  "La Casa dei Gelsi": "#f59e0b",
+  "Tenuta Villa Peggy's": "#10b981",
+  "Studios Club / TooLate": "#3b82f6",
 };
 const GIORNI = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
