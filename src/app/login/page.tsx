@@ -75,9 +75,13 @@ function LoginContent() {
       <div className="w-full max-w-sm">
         {/* ── Logo & Brand ── */}
         <div className="mb-10 flex flex-col items-center text-center">
-          <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-accent/15 shadow-lg shadow-accent/10">
-            <svg className="h-10 w-10 text-accent" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-accent/10">
+            <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-20 w-20">
+              <rect width="52" height="52" rx="14" fill="#0C1445"/>
+              <circle cx="26" cy="26" r="15" stroke="#1E40AF" strokeWidth="1" strokeDasharray="2.5 2.5"/>
+              <circle cx="26" cy="26" r="10" stroke="#2563EB" strokeWidth="1.5"/>
+              <circle cx="26" cy="26" r="5.5" stroke="#3B82F6" strokeWidth="1.5"/>
+              <circle cx="26" cy="26" r="2.5" fill="#60A5FA"/>
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">Creazioni S.R.L.</h1>

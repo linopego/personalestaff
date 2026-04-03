@@ -253,12 +253,16 @@ export default function ProfiloPage() {
             </div>
             <div className="px-6 py-5 space-y-4">
               <div className="flex flex-col items-center text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent/15 text-accent mb-3">
-                  <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl overflow-hidden mb-3">
+                  <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-14 w-14">
+                    <rect width="52" height="52" rx="14" fill="#0C1445"/>
+                    <circle cx="26" cy="26" r="15" stroke="#1E40AF" strokeWidth="1" strokeDasharray="2.5 2.5"/>
+                    <circle cx="26" cy="26" r="10" stroke="#2563EB" strokeWidth="1.5"/>
+                    <circle cx="26" cy="26" r="5.5" stroke="#3B82F6" strokeWidth="1.5"/>
+                    <circle cx="26" cy="26" r="2.5" fill="#60A5FA"/>
                   </svg>
                 </div>
-                <h2 className="text-lg font-bold text-foreground">Presenze Staff</h2>
+                <h2 className="text-lg font-bold text-foreground">Creazioni SRL</h2>
                 <p className="text-sm text-text-muted mt-1">Versione 1.0.0</p>
                 <p className="text-xs text-text-muted mt-3 leading-relaxed">
                   App per il monitoraggio presenze del personale con geolocalizzazione.
