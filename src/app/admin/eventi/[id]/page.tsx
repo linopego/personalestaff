@@ -54,10 +54,42 @@ export default function EventoDetailPage() {
     fetchEvento();
   }
 
+  // Fetch altri eventi dello stesso giorno per vedere chi è occupato
+  const [altriEventi, setAltriEventi] = useState<{ nome: string; sede: string; assegnazioni: { userId: number }[] }[]>([]);
+  useEffect(() => {
+    if (!evento) return;
+    fetch(`/api/eventi?dataInizio=${evento.data}&dataFine=${evento.data}`)
+      .then(r => r.json())
+      .then(async (eventiGiorno) => {
+        const altri = eventiGiorno.filter((e: { id: number }) => e.id !== evento.id);
+        const dettagli = await Promise.all(
+          altri.map(async (e: { id: number; nome: string; sede?: string; sedeNome?: string; sedeAltro?: string }) => {
+            const res = await fetch(`/api/eventi/${e.id}`);
+            if (!res.ok) return { nome: e.nome, sede: e.sede || e.sedeNome || e.sedeAltro || "—", assegnazioni: [] };
+            const det = await res.json();
+            return { nome: det.nome, sede: det.sede, assegnazioni: det.assegnazioni || [] };
+          })
+        );
+        setAltriEventi(dettagli);
+      })
+      .catch(() => {});
+  }, [evento]);
+
   if (loading || !evento) return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>;
 
+  // Mappa: userId → nome evento dove è occupato
+  const occupatiMap = new Map<number, string>();
+  for (const alt of altriEventi) {
+    for (const a of alt.assegnazioni) {
+      occupatiMap.set(a.userId, `${alt.nome} (${alt.sede})`);
+    }
+  }
+
   const assegnatiIds = new Set(evento.assegnazioni.map(a => a.userId));
-  const disponibili = dipendenti.filter(d => !assegnatiIds.has(d.id) && (!search || `${d.nome} ${d.cognome}`.toLowerCase().includes(search.toLowerCase())));
+  const tuttiDisponibili = dipendenti.filter(d => !assegnatiIds.has(d.id) && (!search || `${d.nome} ${d.cognome}`.toLowerCase().includes(search.toLowerCase())));
+  // Separa: prima i liberi, poi gli occupati
+  const liberi = tuttiDisponibili.filter(d => !occupatiMap.has(d.id));
+  const occupati = tuttiDisponibili.filter(d => occupatiMap.has(d.id));
   const inputCls = "w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
 
   return (
@@ -123,7 +155,8 @@ export default function EventoDetailPage() {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca dipendente..." className={inputCls} />
             </div>
             <div className="divide-y divide-border max-h-[60vh] overflow-y-auto">
-              {disponibili.map(d => (
+              {/* Dipendenti liberi */}
+              {liberi.map(d => (
                 <div key={d.id}>
                   <button onClick={() => setExpandedDip(expandedDip === d.id ? null : d.id)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02]">
                     <div className="flex items-center gap-2">
@@ -144,7 +177,44 @@ export default function EventoDetailPage() {
                   )}
                 </div>
               ))}
-              {disponibili.length === 0 && <p className="px-4 py-8 text-center text-text-muted text-sm">Nessun dipendente disponibile.</p>}
+
+              {/* Separatore se ci sono occupati */}
+              {occupati.length > 0 && liberi.length > 0 && (
+                <div className="px-4 py-2 bg-sidebar-bg/50">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Già impegnati in altri eventi</p>
+                </div>
+              )}
+
+              {/* Dipendenti occupati in altri eventi — visibili ma con stile attenuato */}
+              {occupati.map(d => (
+                <div key={d.id} className="opacity-50">
+                  <button onClick={() => setExpandedDip(expandedDip === d.id ? null : d.id)} className="w-full flex items-center justify-between px-4 py-3 text-left">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-500/10 text-[10px] font-bold text-zinc-500">{d.nome[0]}{d.cognome[0]}</div>
+                      <div>
+                        <span className="text-sm font-medium text-text-muted">{d.nome} {d.cognome}</span>
+                        <p className="text-[10px] text-amber-400 font-medium">⚠ {occupatiMap.get(d.id)}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-text-muted">+ Aggiungi</span>
+                  </button>
+                  {expandedDip === d.id && (
+                    <div className="px-4 pb-3 space-y-2 bg-sidebar-bg/50">
+                      <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-400 mb-1">
+                        Attenzione: già assegnato a <strong>{occupatiMap.get(d.id)}</strong>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
+                        <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
+                      </div>
+                      <input placeholder="Mansione" value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), mansione: e.target.value}})} className={`${inputCls} text-xs`} />
+                      <button onClick={() => addAssegnazione(d.id)} className="w-full rounded-lg bg-amber-600 py-2 text-xs font-semibold text-white">Aggiungi comunque</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {liberi.length === 0 && occupati.length === 0 && <p className="px-4 py-8 text-center text-text-muted text-sm">Nessun dipendente disponibile.</p>}
             </div>
           </div>
         </div>
