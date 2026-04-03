@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import AppLogo from "@/components/app-logo";
 import { useAuth } from "@/lib/auth-context";
 
 const NAV_ITEMS = [
@@ -44,11 +45,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
       <header className="flex items-center justify-between border-b border-border bg-sidebar-bg px-4 sm:px-6" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
+            <AppLogo className="h-6 w-6" />
           </div>
-          <span className="text-base font-semibold text-foreground hidden sm:block">Presenze Staff</span>
+          <span className="text-base font-semibold text-foreground hidden sm:block">Creazioni SRL</span>
         </div>
 
         <div className="flex items-center gap-3">
