@@ -17,17 +17,28 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "Le note sono obbligatorie per le correzioni manuali" }, { status: 400 });
   }
 
-  await db.update(timbrature)
-    .set({
+  try {
+    // Costruisci l'oggetto update
+    const updateData: Record<string, unknown> = {
       modificataManualmente: true,
       noteModifica: noteModifica.trim(),
       modifiedBy: parseInt(user.id),
-      ...(body.orario && { orario: new Date(body.orario) }),
-      ...(body.sedeId && { sedeId: body.sedeId }),
-    })
-    .where(eq(timbrature.id, parseInt(id)));
+    };
 
-  return NextResponse.json({ success: true });
+    if (body.orario) {
+      // body.orario arriva come "2026-04-04T10:30:00+02:00" (con timezone dal frontend)
+      updateData.orario = new Date(body.orario);
+    }
+    if (body.sedeId) updateData.sedeId = body.sedeId;
+
+    await db.update(timbrature)
+      .set(updateData)
+      .where(eq(timbrature.id, parseInt(id)));
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    return NextResponse.json({ error: String((e as Error).message) }, { status: 500 });
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
