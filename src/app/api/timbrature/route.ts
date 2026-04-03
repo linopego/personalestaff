@@ -32,11 +32,19 @@ export async function GET(req: NextRequest) {
 
   if (sedeId) conditions.push(eq(timbrature.sedeId, parseInt(sedeId)));
   if (tipo) conditions.push(eq(timbrature.tipo, tipo));
-  if (dataInizio) conditions.push(gte(timbrature.orario, new Date(dataInizio)));
+  // Filtri data: il client manda YYYY-MM-DD in timezone locale.
+  // Usiamo un range largo per coprire sia CET (+01:00) che CEST (+02:00)
+  if (dataInizio) {
+    // Mezzanotte del giorno in CET = 23:00 del giorno prima in UTC (worst case)
+    const d = new Date(dataInizio + "T00:00:00Z");
+    d.setHours(d.getHours() - 1); // -1h per coprire CEST
+    conditions.push(gte(timbrature.orario, d));
+  }
   if (dataFine) {
-    const fine = new Date(dataFine);
-    fine.setHours(23, 59, 59, 999);
-    conditions.push(lte(timbrature.orario, fine));
+    // Fine giornata in CET = 22:59 UTC del giorno dopo (worst case)
+    const d = new Date(dataFine + "T23:59:59Z");
+    d.setHours(d.getHours() + 1); // +1h per coprire CET
+    conditions.push(lte(timbrature.orario, d));
   }
 
   const result = await db
