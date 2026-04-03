@@ -285,12 +285,18 @@ export default function TimbraturePage() {
     if (!editNote.trim()) { setEditError("Le note sono obbligatorie per le correzioni manuali."); return; }
     if (!editTurno) return;
 
+    // Calcola offset timezone locale (es. "+02:00" per CET estate)
+    const tzOffset = new Date().getTimezoneOffset();
+    const tzSign = tzOffset <= 0 ? "+" : "-";
+    const tzHours = String(Math.abs(Math.floor(tzOffset / 60))).padStart(2, "0");
+    const tzMins = String(Math.abs(tzOffset % 60)).padStart(2, "0");
+    const tz = `${tzSign}${tzHours}:${tzMins}`;
+
     setSaving(true);
     try {
-      // Update entrata
       const entData = {
         noteModifica: editNote.trim(),
-        orario: `${editTurno.entrata.data}T${editOraEnt}:00`,
+        orario: `${editTurno.entrata.data}T${editOraEnt}:00${tz}`,
         ...(editSedeId !== "" ? { sedeId: editSedeId } : {}),
       };
       const entRes = await fetch(`/api/timbrature/${editTurno.entrata.id}`, {
@@ -308,7 +314,7 @@ export default function TimbraturePage() {
       if (editTurno.uscita && editOraUsc) {
         const uscData = {
           noteModifica: editNote.trim(),
-          orario: `${editTurno.uscita.data}T${editOraUsc}:00`,
+          orario: `${editTurno.uscita.data}T${editOraUsc}:00${tz}`,
           ...(editSedeId !== "" ? { sedeId: editSedeId } : {}),
         };
         await fetch(`/api/timbrature/${editTurno.uscita.id}`, {
