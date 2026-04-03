@@ -43,6 +43,13 @@
       "when": 1775165242766,
       "tag": "0005_dazzling_sebastian_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775202997761,
+      "tag": "0006_milky_mantis",
+      "breakpoints": true
     }
   ]
 }

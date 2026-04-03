@@ -107,6 +107,35 @@ export const logAccessi = pgTable("log_accessi", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+/* ── Eventi ── */
+export const eventi = pgTable("eventi", {
+  id: serial("id").primaryKey(),
+  nome: text("nome").notNull(),
+  data: date("data").notNull(),
+  oraInizio: varchar("ora_inizio", { length: 5 }),
+  oraFine: varchar("ora_fine", { length: 5 }),
+  sedeId: integer("sede_id").references(() => sedi.id),
+  sedeAltro: text("sede_altro"),
+  descrizione: text("descrizione"),
+  stato: varchar("stato", { length: 15 }).notNull().default("bozza"),
+  creatoDa: integer("creato_da").notNull().references(() => utenti.id),
+  creatoAt: timestamp("creato_at").defaultNow().notNull(),
+  aggiornatoAt: timestamp("aggiornato_at").defaultNow().notNull(),
+});
+
+/* ── Assegnazioni Eventi ── */
+export const eventiAssegnazioni = pgTable("eventi_assegnazioni", {
+  id: serial("id").primaryKey(),
+  eventoId: integer("evento_id").notNull().references(() => eventi.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => utenti.id),
+  orarioInizio: varchar("orario_inizio", { length: 5 }),
+  orarioFine: varchar("orario_fine", { length: 5 }),
+  mansione: text("mansione"),
+  note: text("note"),
+  aggiuntoDa: integer("aggiunto_da").notNull().references(() => utenti.id),
+  aggiuntoAt: timestamp("aggiunto_at").defaultNow().notNull(),
+});
+
 /* ── Turni ── */
 export const turni = pgTable("turni", {
   id: serial("id").primaryKey(),
