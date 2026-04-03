@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const GIORNI_CORTI = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
 
-interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnati: number; }
+interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnati: number; }
 
 const SEDE_BG: Record<string, string> = {
   "La Casa dei Gelsi": "bg-amber-500/10 border-amber-500/25",

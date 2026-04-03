@@ -8,7 +8,7 @@ const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerd�
 const MANSIONE_COLORS: Record<string, string> = { barista: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", sala: "bg-blue-500/15 text-blue-400", guardaroba: "bg-purple-500/15 text-purple-400" };
 
 interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
-interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; assegnazioni: Assegnazione[]; }
+interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnazioni: Assegnazione[]; }
 interface Dip { id: number; nome: string; cognome: string; tipoContratto: string; }
 
 function fmtData(iso: string) { const d = new Date(iso + "T00:00:00"); return `${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}`; }
@@ -33,12 +33,6 @@ export default function EventoDetailPage() {
   }, [id]);
 
   useEffect(() => { fetchEvento(); }, [fetchEvento]);
-
-  async function toggleStato() {
-    if (!evento) return;
-    await fetch(`/api/eventi/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ stato: evento.stato === "bozza" ? "confermato" : "bozza" }) });
-    fetchEvento();
-  }
 
   async function addAssegnazione(userId: number) {
     const f = addForm[userId] || { orarioInizio: "", orarioFine: "", mansione: "", note: "" };
@@ -101,12 +95,6 @@ export default function EventoDetailPage() {
             <h1 className="text-2xl font-bold text-foreground">{evento.nome}</h1>
             <p className="text-sm text-text-muted mt-1">{fmtData(evento.data)} {evento.oraInizio && `· ${evento.oraInizio}`}{evento.oraFine && ` – ${evento.oraFine}`}</p>
             <p className="text-sm text-text-muted">{evento.sede}</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={toggleStato} className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${evento.stato === "bozza" ? "bg-green-600" : "bg-amber-600"}`}>
-              {evento.stato === "bozza" ? "Conferma" : "Riporta a bozza"}
-            </button>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold self-center ${evento.stato === "confermato" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{evento.stato}</span>
           </div>
         </div>
       </div>

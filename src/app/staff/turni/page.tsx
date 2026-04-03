@@ -6,7 +6,7 @@ const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
 const MANSIONE_COLORS: Record<string, string> = { barista: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", sala: "bg-blue-500/15 text-blue-400", guardaroba: "bg-purple-500/15 text-purple-400" };
 
-interface MioEvento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; stato: string; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; }
+interface MioEvento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; }
 
 function fmtData(iso: string) { const d = new Date(iso + "T00:00:00"); return `${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}`; }
 
@@ -60,7 +60,6 @@ export default function StaffTurniPage() {
                 <div className="flex gap-1.5 shrink-0">
                   {e.data === oggi && <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent">OGGI</span>}
                   {e.data === domani && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-400">DOMANI</span>}
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${e.stato === "confermato" ? "bg-green-500/15 text-green-400" : "bg-amber-500/15 text-amber-400"}`}>{e.stato === "confermato" ? "Confermato" : "In attesa"}</span>
                 </div>
               </div>
 

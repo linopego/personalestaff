@@ -64,7 +64,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params;
   const [evento] = await db.select().from(eventi).where(eq(eventi.id, parseInt(id))).limit(1);
   if (!evento) return NextResponse.json({ error: "Non trovato" }, { status: 404 });
-  if (evento.stato === "confermato") return NextResponse.json({ error: "Un evento confermato non può essere eliminato" }, { status: 400 });
 
   await db.delete(eventi).where(eq(eventi.id, parseInt(id)));
   return NextResponse.json({ success: true });
