@@ -34,6 +34,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const user = await getSession();
+  if (!user) return unauthorized();
+  if (user.ruolo !== "admin") return forbidden();
+
+  const body = await req.json();
+  const { assegnazioneId, orarioInizio, orarioFine, mansione, note } = body;
+
+  if (!assegnazioneId) return NextResponse.json({ error: "assegnazioneId mancante" }, { status: 400 });
+
+  await db.update(eventiAssegnazioni).set({
+    ...(orarioInizio !== undefined && { orarioInizio: orarioInizio || null }),
+    ...(orarioFine !== undefined && { orarioFine: orarioFine || null }),
+    ...(mansione !== undefined && { mansione: mansione || null }),
+    ...(note !== undefined && { note: note || null }),
+  }).where(eq(eventiAssegnazioni.id, parseInt(assegnazioneId)));
+
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
   if (!user) return unauthorized();
