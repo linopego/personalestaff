@@ -30,6 +30,8 @@ export default function EventoDetailPage() {
   const [search, setSearch] = useState("");
   const [addForm, setAddForm] = useState<Record<number, { orarioInizio: string; orarioFine: string; mansione: string; note: string }>>({});
   const [expandedDip, setExpandedDip] = useState<number|null>(null);
+  const [editAssId, setEditAssId] = useState<number|null>(null);
+  const [editAss, setEditAss] = useState({ orarioInizio: "", orarioFine: "", mansione: "", note: "" });
 
   useEffect(() => { fetch("/api/dipendenti").then(r=>r.json()).then(d => setDipendenti(d.filter((x: Dip & {attivo: boolean}) => x.attivo))).catch(()=>{}); }, []);
 
@@ -46,6 +48,18 @@ export default function EventoDetailPage() {
     const res = await fetch(`/api/eventi/${id}/assegnazioni`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, orarioInizio: f.orarioInizio||null, orarioFine: f.orarioFine||null, mansione: f.mansione||null, note: f.note||null }) });
     if (!res.ok) { const e = await res.json().catch(()=>({})); alert(e.error||"Errore"); return; }
     setExpandedDip(null);
+    fetchEvento();
+  }
+
+  function openEditAss(a: Assegnazione) {
+    setEditAssId(a.id);
+    setEditAss({ orarioInizio: a.orarioInizio || "", orarioFine: a.orarioFine || "", mansione: a.mansione || "", note: a.note || "" });
+  }
+
+  async function saveEditAss() {
+    if (!editAssId) return;
+    await fetch(`/api/eventi/${id}/assegnazioni`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assegnazioneId: editAssId, ...editAss }) });
+    setEditAssId(null);
     fetchEvento();
   }
 
@@ -142,10 +156,28 @@ export default function EventoDetailPage() {
                         </div>
                       </div>
                     </div>
-                    <button onClick={() => removeAssegnazione(a.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => openEditAss(a)} className="text-xs text-accent hover:text-accent-hover" title="Modifica">✎</button>
+                      <button onClick={() => removeAssegnazione(a.id)} className="text-xs text-red-400 hover:text-red-300">✕</button>
+                    </div>
                   </div>
+                  {/* Editing inline */}
+                  {editAssId === a.id && (
+                    <div className="mt-2 ml-10 space-y-2 rounded-lg bg-sidebar-bg/50 p-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="time" value={editAss.orarioInizio} onChange={e => setEditAss({...editAss, orarioInizio: e.target.value})} placeholder="Inizio" className={`${inputCls} text-xs`} />
+                        <input type="time" value={editAss.orarioFine} onChange={e => setEditAss({...editAss, orarioFine: e.target.value})} placeholder="Fine" className={`${inputCls} text-xs`} />
+                      </div>
+                      <input value={editAss.mansione} onChange={e => setEditAss({...editAss, mansione: e.target.value})} placeholder="Mansione" className={`${inputCls} text-xs`} />
+                      <input value={editAss.note} onChange={e => setEditAss({...editAss, note: e.target.value})} placeholder="Note" className={`${inputCls} text-xs`} />
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditAssId(null)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-text-muted">Annulla</button>
+                        <button onClick={saveEditAss} className="flex-1 rounded-lg bg-accent py-1.5 text-xs font-semibold text-white">Salva</button>
+                      </div>
+                    </div>
+                  )}
                   {a.motivoRifiuto && <p className="text-xs text-red-400 italic mt-1 ml-10">Motivo: {a.motivoRifiuto}</p>}
-                  {a.note && <p className="text-xs text-text-muted italic mt-1 ml-10">{a.note}</p>}
+                  {editAssId !== a.id && a.note && <p className="text-xs text-text-muted italic mt-1 ml-10">{a.note}</p>}
                 </div>
               ))}
             </div>
