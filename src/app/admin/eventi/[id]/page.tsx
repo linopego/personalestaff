@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 
 const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
-const MANSIONE_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400", responsabile: "bg-red-500/15 text-red-400", "responsabile casse": "bg-emerald-500/15 text-emerald-400" };
-const MANSIONI = ["sala", "bar", "cassa", "guardaroba", "responsabile", "responsabile casse"];
+const MANSIONE_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400", responsabile: "bg-red-500/15 text-red-400", "responsabile casse": "bg-emerald-500/15 text-emerald-400", chiusura: "bg-zinc-300/15 text-zinc-300" };
+const MANSIONI = ["sala", "bar", "cassa", "guardaroba", "responsabile", "responsabile casse", "chiusura"];
 
 interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; statoConferma: string; motivoRifiuto: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnazioni: Assegnazione[]; }
