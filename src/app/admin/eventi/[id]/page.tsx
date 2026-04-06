@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 
 const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
-const MANSIONE_COLORS: Record<string, string> = { barista: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", sala: "bg-blue-500/15 text-blue-400", guardaroba: "bg-purple-500/15 text-purple-400" };
+const MANSIONE_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400" };
+const MANSIONI = ["sala", "bar", "cassa", "guardaroba"];
 
 interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; statoConferma: string; motivoRifiuto: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnazioni: Assegnazione[]; }
@@ -168,7 +169,10 @@ export default function EventoDetailPage() {
                         <input type="time" value={editAss.orarioInizio} onChange={e => setEditAss({...editAss, orarioInizio: e.target.value})} placeholder="Inizio" className={`${inputCls} text-xs`} />
                         <input type="time" value={editAss.orarioFine} onChange={e => setEditAss({...editAss, orarioFine: e.target.value})} placeholder="Fine" className={`${inputCls} text-xs`} />
                       </div>
-                      <input value={editAss.mansione} onChange={e => setEditAss({...editAss, mansione: e.target.value})} placeholder="Mansione" className={`${inputCls} text-xs`} />
+                      <select value={editAss.mansione} onChange={e => setEditAss({...editAss, mansione: e.target.value})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                        <option value="">Seleziona mansione</option>
+                        {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+                      </select>
                       <input value={editAss.note} onChange={e => setEditAss({...editAss, note: e.target.value})} placeholder="Note" className={`${inputCls} text-xs`} />
                       <div className="flex gap-2">
                         <button onClick={() => setEditAssId(null)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-text-muted">Annulla</button>
@@ -207,7 +211,10 @@ export default function EventoDetailPage() {
                         <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
                         <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
                       </div>
-                      <input placeholder="Mansione" value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), mansione: e.target.value}})} className={`${inputCls} text-xs`} />
+                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                        <option value="">Seleziona mansione</option>
+                        {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+                      </select>
                       <button onClick={() => addAssegnazione(d.id)} className="w-full rounded-lg bg-accent py-2 text-xs font-semibold text-white">Aggiungi</button>
                     </div>
                   )}
@@ -243,7 +250,10 @@ export default function EventoDetailPage() {
                         <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
                         <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
                       </div>
-                      <input placeholder="Mansione" value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), mansione: e.target.value}})} className={`${inputCls} text-xs`} />
+                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                        <option value="">Seleziona mansione</option>
+                        {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
+                      </select>
                       <button onClick={() => addAssegnazione(d.id)} className="w-full rounded-lg bg-amber-600 py-2 text-xs font-semibold text-white">Aggiungi comunque</button>
                     </div>
                   )}
