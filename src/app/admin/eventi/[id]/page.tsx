@@ -7,8 +7,9 @@ const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
 const MANSIONE_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400", responsabile: "bg-red-500/15 text-red-400", "responsabile casse": "bg-emerald-500/15 text-emerald-400" };
 const MANSIONI = ["sala", "bar", "cassa", "guardaroba", "responsabile", "responsabile casse"];
+const POSTAZIONI = ["Bar 1", "Bar 2", "Bar 3", "Bar 4", "Cassa Bar 1", "Cassa Bar 2", "Cassa Bar 3", "Cassa Bar 4", "Cassa Ingresso", "Cassa Cambusa", "Pass Comande"];
 
-interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; statoConferma: string; motivoRifiuto: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
+interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; postazione: string|null; note: string|null; statoConferma: string; motivoRifiuto: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnazioni: Assegnazione[]; }
 
 const CONFERMA_BADGE: Record<string, string> = {
@@ -29,10 +30,10 @@ export default function EventoDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"assegnati"|"aggiungi">("assegnati");
   const [search, setSearch] = useState("");
-  const [addForm, setAddForm] = useState<Record<number, { orarioInizio: string; orarioFine: string; mansione: string; note: string; chiusura: boolean }>>({});
+  const [addForm, setAddForm] = useState<Record<number, { orarioInizio: string; orarioFine: string; mansione: string; postazione: string; postazioneAltro: string; note: string; chiusura: boolean }>>({});
   const [expandedDip, setExpandedDip] = useState<number|null>(null);
   const [editAssId, setEditAssId] = useState<number|null>(null);
-  const [editAss, setEditAss] = useState({ orarioInizio: "", orarioFine: "", mansione: "", note: "", chiusura: false });
+  const [editAss, setEditAss] = useState({ orarioInizio: "", orarioFine: "", mansione: "", postazione: "", postazioneAltro: "", note: "", chiusura: false });
 
   useEffect(() => { fetch("/api/dipendenti").then(r=>r.json()).then(d => setDipendenti(d.filter((x: Dip & {attivo: boolean}) => x.attivo))).catch(()=>{}); }, []);
 
@@ -45,8 +46,9 @@ export default function EventoDetailPage() {
   useEffect(() => { fetchEvento(); }, [fetchEvento]);
 
   async function addAssegnazione(userId: number) {
-    const f = addForm[userId] || { orarioInizio: "", orarioFine: "", mansione: "", note: "", chiusura: false };
-    const res = await fetch(`/api/eventi/${id}/assegnazioni`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, orarioInizio: f.orarioInizio||null, orarioFine: f.chiusura ? "chiusura" : (f.orarioFine||null), mansione: f.mansione||null, note: f.note||null }) });
+    const f = addForm[userId] || { orarioInizio: "", orarioFine: "", mansione: "", postazione: "", postazioneAltro: "", note: "", chiusura: false };
+    const postVal = f.postazione === "altro" ? f.postazioneAltro : f.postazione;
+    const res = await fetch(`/api/eventi/${id}/assegnazioni`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, orarioInizio: f.orarioInizio||null, orarioFine: f.chiusura ? "chiusura" : (f.orarioFine||null), mansione: f.mansione||null, postazione: postVal||null, note: f.note||null }) });
     if (!res.ok) { const e = await res.json().catch(()=>({})); alert(e.error||"Errore"); return; }
     setExpandedDip(null);
     fetchEvento();
@@ -54,12 +56,14 @@ export default function EventoDetailPage() {
 
   function openEditAss(a: Assegnazione) {
     setEditAssId(a.id);
-    setEditAss({ orarioInizio: a.orarioInizio || "", orarioFine: a.orarioFine === "chiusura" ? "" : (a.orarioFine || ""), mansione: a.mansione || "", note: a.note || "", chiusura: a.orarioFine === "chiusura" });
+    const isPostazioneAltro = a.postazione && !POSTAZIONI.includes(a.postazione);
+    setEditAss({ orarioInizio: a.orarioInizio || "", orarioFine: a.orarioFine === "chiusura" ? "" : (a.orarioFine || ""), mansione: a.mansione || "", postazione: isPostazioneAltro ? "altro" : (a.postazione || ""), postazioneAltro: isPostazioneAltro ? a.postazione! : "", note: a.note || "", chiusura: a.orarioFine === "chiusura" });
   }
 
   async function saveEditAss() {
     if (!editAssId) return;
-    await fetch(`/api/eventi/${id}/assegnazioni`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assegnazioneId: editAssId, orarioInizio: editAss.orarioInizio, orarioFine: editAss.chiusura ? "chiusura" : editAss.orarioFine, mansione: editAss.mansione, note: editAss.note }) });
+    const postVal = editAss.postazione === "altro" ? editAss.postazioneAltro : editAss.postazione;
+    await fetch(`/api/eventi/${id}/assegnazioni`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assegnazioneId: editAssId, orarioInizio: editAss.orarioInizio, orarioFine: editAss.chiusura ? "chiusura" : editAss.orarioFine, mansione: editAss.mansione, postazione: postVal, note: editAss.note }) });
     setEditAssId(null);
     fetchEvento();
   }
@@ -154,6 +158,7 @@ export default function EventoDetailPage() {
                         <div className="flex items-center gap-2 text-xs text-text-muted">
                           {(a.orarioInizio || a.orarioFine) && <span className="font-mono">{a.orarioInizio||"—"} – {a.orarioFine === "chiusura" ? <span className="text-zinc-300 font-sans">Chiusura</span> : (a.orarioFine||"—")}</span>}
                           {a.mansione && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${MANSIONE_COLORS[a.mansione.toLowerCase()] || "bg-zinc-500/15 text-zinc-400"}`}>{a.mansione}</span>}
+                          {a.postazione && <span className="rounded-full bg-zinc-500/15 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">{a.postazione}</span>}
                         </div>
                       </div>
                     </div>
@@ -181,6 +186,12 @@ export default function EventoDetailPage() {
                         <option value="">Seleziona mansione</option>
                         {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                       </select>
+                      <select value={editAss.postazione} onChange={e => setEditAss({...editAss, postazione: e.target.value, postazioneAltro: e.target.value === "altro" ? editAss.postazioneAltro : ""})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                        <option value="">Seleziona postazione</option>
+                        {POSTAZIONI.map(p => <option key={p} value={p}>{p}</option>)}
+                        <option value="altro">Altro...</option>
+                      </select>
+                      {editAss.postazione === "altro" && <input value={editAss.postazioneAltro} onChange={e => setEditAss({...editAss, postazioneAltro: e.target.value})} placeholder="Scrivi postazione" className={`${inputCls} text-xs`} />}
                       <input value={editAss.note} onChange={e => setEditAss({...editAss, note: e.target.value})} placeholder="Note" className={`${inputCls} text-xs`} />
                       <div className="flex gap-2">
                         <button onClick={() => setEditAssId(null)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-text-muted">Annulla</button>
@@ -216,21 +227,27 @@ export default function EventoDetailPage() {
                   {expandedDip === d.id && (
                     <div className="px-4 pb-3 space-y-2 bg-sidebar-bg/50">
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
+                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
                         {addForm[d.id]?.chiusura ? (
                           <div className="flex items-center justify-center rounded-lg border border-zinc-500/30 bg-zinc-500/10 py-2 text-xs font-medium text-zinc-300">Chiusura</div>
                         ) : (
-                          <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
+                          <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
                         )}
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={addForm[d.id]?.chiusura||false} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), chiusura: e.target.checked, orarioFine: e.target.checked ? "" : (addForm[d.id]?.orarioFine||"")}})} className="rounded border-border" />
+                        <input type="checkbox" checked={addForm[d.id]?.chiusura||false} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), chiusura: e.target.checked, orarioFine: e.target.checked ? "" : (addForm[d.id]?.orarioFine||"")}})} className="rounded border-border" />
                         <span className="text-xs text-text-muted">Chiusura</span>
                       </label>
-                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
                         <option value="">Seleziona mansione</option>
                         {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                       </select>
+                      <select value={addForm[d.id]?.postazione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), postazione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                        <option value="">Seleziona postazione</option>
+                        {POSTAZIONI.map(p => <option key={p} value={p}>{p}</option>)}
+                        <option value="altro">Altro...</option>
+                      </select>
+                      {addForm[d.id]?.postazione === "altro" && <input value={addForm[d.id]?.postazioneAltro||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), postazioneAltro: e.target.value}})} placeholder="Scrivi postazione" className={`${inputCls} text-xs`} />}
                       <button onClick={() => addAssegnazione(d.id)} className="w-full rounded-lg bg-accent py-2 text-xs font-semibold text-white">Aggiungi</button>
                     </div>
                   )}
@@ -263,18 +280,18 @@ export default function EventoDetailPage() {
                         Attenzione: già assegnato a <strong>{occupatiMap.get(d.id)}</strong>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
+                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
                         {addForm[d.id]?.chiusura ? (
                           <div className="flex items-center justify-center rounded-lg border border-zinc-500/30 bg-zinc-500/10 py-2 text-xs font-medium text-zinc-300">Chiusura</div>
                         ) : (
-                          <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
+                          <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
                         )}
                       </div>
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={addForm[d.id]?.chiusura||false} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), chiusura: e.target.checked, orarioFine: e.target.checked ? "" : (addForm[d.id]?.orarioFine||"")}})} className="rounded border-border" />
+                        <input type="checkbox" checked={addForm[d.id]?.chiusura||false} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), chiusura: e.target.checked, orarioFine: e.target.checked ? "" : (addForm[d.id]?.orarioFine||"")}})} className="rounded border-border" />
                         <span className="text-xs text-text-muted">Chiusura</span>
                       </label>
-                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
                         <option value="">Seleziona mansione</option>
                         {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                       </select>

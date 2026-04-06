@@ -20,6 +20,7 @@ export async function GET() {
       orarioInizio: eventiAssegnazioni.orarioInizio,
       orarioFine: eventiAssegnazioni.orarioFine,
       mansione: eventiAssegnazioni.mansione,
+      postazione: eventiAssegnazioni.postazione,
       note: eventiAssegnazioni.note,
       statoConferma: eventiAssegnazioni.statoConferma,
     })

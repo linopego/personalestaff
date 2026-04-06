@@ -131,6 +131,7 @@ export const eventiAssegnazioni = pgTable("eventi_assegnazioni", {
   orarioInizio: varchar("orario_inizio", { length: 5 }),
   orarioFine: varchar("orario_fine", { length: 5 }),
   mansione: text("mansione"),
+  postazione: text("postazione"),
   note: text("note"),
   statoConferma: varchar("stato_conferma", { length: 15 }).notNull().default("in_attesa"), // in_attesa, confermato, rifiutato
   motivoRifiuto: text("motivo_rifiuto"),
