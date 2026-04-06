@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const eventoId = parseInt(id);
   const body = await req.json();
-  const { userId, orarioInizio, orarioFine, mansione, note } = body;
+  const { userId, orarioInizio, orarioFine, mansione, postazione, note } = body;
 
   if (!userId) return NextResponse.json({ error: "userId mancante" }, { status: 400 });
 
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const [created] = await db.insert(eventiAssegnazioni).values({
       eventoId, userId,
       orarioInizio: orarioInizio || null, orarioFine: orarioFine || null,
-      mansione: mansione || null, note: note || null,
+      mansione: mansione || null, postazione: postazione || null, note: note || null,
       aggiuntoDa: parseInt(user.id),
     }).returning();
     return NextResponse.json(created, { status: 201 });
@@ -40,7 +40,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (user.ruolo !== "admin") return forbidden();
 
   const body = await req.json();
-  const { assegnazioneId, orarioInizio, orarioFine, mansione, note } = body;
+  const { assegnazioneId, orarioInizio, orarioFine, mansione, postazione, note } = body;
 
   if (!assegnazioneId) return NextResponse.json({ error: "assegnazioneId mancante" }, { status: 400 });
 
@@ -48,6 +48,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     ...(orarioInizio !== undefined && { orarioInizio: orarioInizio || null }),
     ...(orarioFine !== undefined && { orarioFine: orarioFine || null }),
     ...(mansione !== undefined && { mansione: mansione || null }),
+    ...(postazione !== undefined && { postazione: postazione || null }),
     ...(note !== undefined && { note: note || null }),
   }).where(eq(eventiAssegnazioni.id, parseInt(assegnazioneId)));
 

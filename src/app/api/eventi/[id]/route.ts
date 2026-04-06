@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const assegnazioni = await db.select({
     id: eventiAssegnazioni.id, userId: eventiAssegnazioni.userId,
     orarioInizio: eventiAssegnazioni.orarioInizio, orarioFine: eventiAssegnazioni.orarioFine,
-    mansione: eventiAssegnazioni.mansione, note: eventiAssegnazioni.note,
+    mansione: eventiAssegnazioni.mansione, postazione: eventiAssegnazioni.postazione, note: eventiAssegnazioni.note,
     statoConferma: eventiAssegnazioni.statoConferma, motivoRifiuto: eventiAssegnazioni.motivoRifiuto,
     dipNome: utenti.nome, dipCognome: utenti.cognome, tipoContratto: utenti.tipoContratto,
   }).from(eventiAssegnazioni).innerJoin(utenti, eq(eventiAssegnazioni.userId, utenti.id))
