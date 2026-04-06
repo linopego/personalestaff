@@ -29,7 +29,7 @@ export default function EventoDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"assegnati"|"aggiungi">("assegnati");
   const [search, setSearch] = useState("");
-  const [addForm, setAddForm] = useState<Record<number, { orarioInizio: string; orarioFine: string; mansione: string; note: string }>>({});
+  const [addForm, setAddForm] = useState<Record<number, { orarioInizio: string; orarioFine: string; mansione: string; note: string; chiusura: boolean }>>({});
   const [expandedDip, setExpandedDip] = useState<number|null>(null);
   const [editAssId, setEditAssId] = useState<number|null>(null);
   const [editAss, setEditAss] = useState({ orarioInizio: "", orarioFine: "", mansione: "", note: "", chiusura: false });
