@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 
 const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
-const MANSIONE_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400", responsabile: "bg-red-500/15 text-red-400", "responsabile casse": "bg-emerald-500/15 text-emerald-400", chiusura: "bg-zinc-300/15 text-zinc-300" };
-const MANSIONI = ["sala", "bar", "cassa", "guardaroba", "responsabile", "responsabile casse", "chiusura"];
+const MANSIONE_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400", responsabile: "bg-red-500/15 text-red-400", "responsabile casse": "bg-emerald-500/15 text-emerald-400" };
+const MANSIONI = ["sala", "bar", "cassa", "guardaroba", "responsabile", "responsabile casse"];
 
 interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; statoConferma: string; motivoRifiuto: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnazioni: Assegnazione[]; }
@@ -32,7 +32,7 @@ export default function EventoDetailPage() {
   const [addForm, setAddForm] = useState<Record<number, { orarioInizio: string; orarioFine: string; mansione: string; note: string }>>({});
   const [expandedDip, setExpandedDip] = useState<number|null>(null);
   const [editAssId, setEditAssId] = useState<number|null>(null);
-  const [editAss, setEditAss] = useState({ orarioInizio: "", orarioFine: "", mansione: "", note: "" });
+  const [editAss, setEditAss] = useState({ orarioInizio: "", orarioFine: "", mansione: "", note: "", chiusura: false });
 
   useEffect(() => { fetch("/api/dipendenti").then(r=>r.json()).then(d => setDipendenti(d.filter((x: Dip & {attivo: boolean}) => x.attivo))).catch(()=>{}); }, []);
 
@@ -45,8 +45,8 @@ export default function EventoDetailPage() {
   useEffect(() => { fetchEvento(); }, [fetchEvento]);
 
   async function addAssegnazione(userId: number) {
-    const f = addForm[userId] || { orarioInizio: "", orarioFine: "", mansione: "", note: "" };
-    const res = await fetch(`/api/eventi/${id}/assegnazioni`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, orarioInizio: f.orarioInizio||null, orarioFine: f.orarioFine||null, mansione: f.mansione||null, note: f.note||null }) });
+    const f = addForm[userId] || { orarioInizio: "", orarioFine: "", mansione: "", note: "", chiusura: false };
+    const res = await fetch(`/api/eventi/${id}/assegnazioni`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId, orarioInizio: f.orarioInizio||null, orarioFine: f.chiusura ? "chiusura" : (f.orarioFine||null), mansione: f.mansione||null, note: f.note||null }) });
     if (!res.ok) { const e = await res.json().catch(()=>({})); alert(e.error||"Errore"); return; }
     setExpandedDip(null);
     fetchEvento();
@@ -54,12 +54,12 @@ export default function EventoDetailPage() {
 
   function openEditAss(a: Assegnazione) {
     setEditAssId(a.id);
-    setEditAss({ orarioInizio: a.orarioInizio || "", orarioFine: a.orarioFine || "", mansione: a.mansione || "", note: a.note || "" });
+    setEditAss({ orarioInizio: a.orarioInizio || "", orarioFine: a.orarioFine === "chiusura" ? "" : (a.orarioFine || ""), mansione: a.mansione || "", note: a.note || "", chiusura: a.orarioFine === "chiusura" });
   }
 
   async function saveEditAss() {
     if (!editAssId) return;
-    await fetch(`/api/eventi/${id}/assegnazioni`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assegnazioneId: editAssId, ...editAss }) });
+    await fetch(`/api/eventi/${id}/assegnazioni`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assegnazioneId: editAssId, orarioInizio: editAss.orarioInizio, orarioFine: editAss.chiusura ? "chiusura" : editAss.orarioFine, mansione: editAss.mansione, note: editAss.note }) });
     setEditAssId(null);
     fetchEvento();
   }
@@ -152,7 +152,7 @@ export default function EventoDetailPage() {
                           <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${CONFERMA_BADGE[a.statoConferma] || CONFERMA_BADGE.in_attesa}`}>{CONFERMA_LABEL[a.statoConferma] || "In attesa"}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-text-muted">
-                          {(a.orarioInizio || a.orarioFine) && <span className="font-mono">{a.orarioInizio||"—"} – {a.orarioFine||"—"}</span>}
+                          {(a.orarioInizio || a.orarioFine) && <span className="font-mono">{a.orarioInizio||"—"} – {a.orarioFine === "chiusura" ? <span className="text-zinc-300 font-sans">Chiusura</span> : (a.orarioFine||"—")}</span>}
                           {a.mansione && <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${MANSIONE_COLORS[a.mansione.toLowerCase()] || "bg-zinc-500/15 text-zinc-400"}`}>{a.mansione}</span>}
                         </div>
                       </div>
@@ -167,8 +167,16 @@ export default function EventoDetailPage() {
                     <div className="mt-2 ml-10 space-y-2 rounded-lg bg-sidebar-bg/50 p-3">
                       <div className="grid grid-cols-2 gap-2">
                         <input type="time" value={editAss.orarioInizio} onChange={e => setEditAss({...editAss, orarioInizio: e.target.value})} placeholder="Inizio" className={`${inputCls} text-xs`} />
-                        <input type="time" value={editAss.orarioFine} onChange={e => setEditAss({...editAss, orarioFine: e.target.value})} placeholder="Fine" className={`${inputCls} text-xs`} />
+                        {editAss.chiusura ? (
+                          <div className="flex items-center justify-center rounded-lg border border-zinc-500/30 bg-zinc-500/10 py-2 text-xs font-medium text-zinc-300">Chiusura</div>
+                        ) : (
+                          <input type="time" value={editAss.orarioFine} onChange={e => setEditAss({...editAss, orarioFine: e.target.value})} placeholder="Fine" className={`${inputCls} text-xs`} />
+                        )}
                       </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={editAss.chiusura} onChange={e => setEditAss({...editAss, chiusura: e.target.checked, orarioFine: e.target.checked ? "" : editAss.orarioFine})} className="rounded border-border" />
+                        <span className="text-xs text-text-muted">Chiusura</span>
+                      </label>
                       <select value={editAss.mansione} onChange={e => setEditAss({...editAss, mansione: e.target.value})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
                         <option value="">Seleziona mansione</option>
                         {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
@@ -208,10 +216,18 @@ export default function EventoDetailPage() {
                   {expandedDip === d.id && (
                     <div className="px-4 pb-3 space-y-2 bg-sidebar-bg/50">
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
-                        <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
+                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
+                        {addForm[d.id]?.chiusura ? (
+                          <div className="flex items-center justify-center rounded-lg border border-zinc-500/30 bg-zinc-500/10 py-2 text-xs font-medium text-zinc-300">Chiusura</div>
+                        ) : (
+                          <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
+                        )}
                       </div>
-                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={addForm[d.id]?.chiusura||false} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), chiusura: e.target.checked, orarioFine: e.target.checked ? "" : (addForm[d.id]?.orarioFine||"")}})} className="rounded border-border" />
+                        <span className="text-xs text-text-muted">Chiusura</span>
+                      </label>
+                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
                         <option value="">Seleziona mansione</option>
                         {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                       </select>
@@ -247,10 +263,18 @@ export default function EventoDetailPage() {
                         Attenzione: già assegnato a <strong>{occupatiMap.get(d.id)}</strong>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
-                        <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
+                        <input type="time" placeholder="Inizio" value={addForm[d.id]?.orarioInizio||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioInizio: e.target.value}})} className={`${inputCls} text-xs`} />
+                        {addForm[d.id]?.chiusura ? (
+                          <div className="flex items-center justify-center rounded-lg border border-zinc-500/30 bg-zinc-500/10 py-2 text-xs font-medium text-zinc-300">Chiusura</div>
+                        ) : (
+                          <input type="time" placeholder="Fine" value={addForm[d.id]?.orarioFine||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), orarioFine: e.target.value}})} className={`${inputCls} text-xs`} />
+                        )}
                       </div>
-                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:""}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={addForm[d.id]?.chiusura||false} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), chiusura: e.target.checked, orarioFine: e.target.checked ? "" : (addForm[d.id]?.orarioFine||"")}})} className="rounded border-border" />
+                        <span className="text-xs text-text-muted">Chiusura</span>
+                      </label>
+                      <select value={addForm[d.id]?.mansione||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",note:"",chiusura:false}), mansione: e.target.value}})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
                         <option value="">Seleziona mansione</option>
                         {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                       </select>
