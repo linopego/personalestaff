@@ -89,8 +89,10 @@ export async function POST(req: NextRequest) {
 
   const userId = parseInt(user.id);
 
-  if (isRemoto) {
-    // Verifica che il dipendente abbia timbratura remota abilitata
+  const isForzata = isRemoto && tipo === "Uscita" && motivoRemoto?.includes("Uscita forzata");
+
+  if (isRemoto && !isForzata) {
+    // Verifica che il dipendente abbia timbratura remota abilitata (non per uscita forzata)
     const [dbUser] = await db.select({ timbraturaRemotaAbilitata: utenti.timbraturaRemotaAbilitata })
       .from(utenti).where(eq(utenti.id, userId)).limit(1);
     if (!dbUser?.timbraturaRemotaAbilitata) {

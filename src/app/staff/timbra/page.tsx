@@ -124,6 +124,7 @@ export default function TimbraPage() {
   // Modale
   const [showModal, setShowModal] = useState(false);
   const [showRemotoModal, setShowRemotoModal] = useState(false);
+  const [showUscitaForzata, setShowUscitaForzata] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittingRemoto, setSubmittingRemoto] = useState(false);
@@ -278,6 +279,29 @@ export default function TimbraPage() {
     }
   }
 
+  async function uscitaForzata() {
+    if (!coords) return;
+    setShowUscitaForzata(false);
+
+    try {
+      const res = await fetch("/api/timbrature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "Uscita", lat: coords.lat, lng: coords.lng, tipoAccesso: "remoto", motivoRemoto: "Uscita forzata — dimenticata timbratura in sede" }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Errore");
+        return;
+      }
+
+      window.location.reload();
+    } catch {
+      alert("Errore di connessione. Riprova.");
+    }
+  }
+
   const tipoTimbra = turnoAperto ? "Uscita" : "Entrata";
   const canTimbra = !!risultato?.inSede && !turnoChiuso && !nuovoTurnoDelay;
 
@@ -313,6 +337,7 @@ export default function TimbraPage() {
           turnoAperto={turnoAperto}
           tipoTimbra={tipoTimbra}
           onTimbraRemoto={() => setShowRemotoModal(true)}
+          onUscitaForzata={() => setShowUscitaForzata(true)}
         />
       )}
       {geoStatus === "ready" && risultato?.inSede && (
@@ -408,6 +433,34 @@ export default function TimbraPage() {
           onConfirm={confermaTimbraRemoto}
           onCancel={() => setShowRemotoModal(false)}
         />
+      )}
+
+      {/* ═══ MODALE USCITA FORZATA ═══ */}
+      {showUscitaForzata && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={() => setShowUscitaForzata(false)}>
+          <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border-t sm:border border-border bg-card-bg animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="h-1 w-10 rounded-full bg-border" />
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15">
+                  <ArrowUpIcon className="h-7 w-7 text-red-400" />
+                </div>
+                <h2 className="text-lg font-bold text-foreground">Uscita forzata</h2>
+                <p className="mt-1 text-sm text-text-muted">Hai dimenticato di timbrare l&apos;uscita in sede? L&apos;uscita verrà registrata con l&apos;orario attuale e la tua posizione GPS.</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowUscitaForzata(false)} className="flex-1 rounded-xl border border-border py-3.5 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[48px]">
+                  Annulla
+                </button>
+                <button onClick={uscitaForzata} className="flex-1 rounded-xl bg-red-600 py-3.5 text-base font-semibold text-white active:bg-red-700 active:scale-[0.97] transition-all min-h-[48px]">
+                  Conferma uscita
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ═══ FEEDBACK SUCCESSO ═══ */}
@@ -521,6 +574,7 @@ function GeoFuoriSede({
   turnoAperto: boolean;
   tipoTimbra: "Entrata" | "Uscita";
   onTimbraRemoto: () => void;
+  onUscitaForzata: () => void;
 }) {
   // Se ha un turno remoto aperto, mostra il pulsante uscita remoto prominente
   if (timbraturaRemotaAbilitata && turnoAperto) {
@@ -565,7 +619,21 @@ function GeoFuoriSede({
         TIMBRATURA NON DISPONIBILE
       </button>
 
-      {timbraturaRemotaAbilitata && (
+      {/* Uscita forzata — sempre visibile quando c'è un turno aperto */}
+      {turnoAperto && !timbraturaRemotaAbilitata && (
+        <>
+          <div className="mt-4 mb-3 border-t border-border" />
+          <button
+            onClick={onUscitaForzata}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-red-500/30 py-3 text-sm font-medium text-red-400 active:bg-red-500/10 active:scale-[0.98] transition-all min-h-[48px]"
+          >
+            Uscita forzata
+          </button>
+          <p className="mt-1.5 text-[11px] text-text-muted">Hai dimenticato di timbrare l&apos;uscita?</p>
+        </>
+      )}
+
+      {timbraturaRemotaAbilitata && !turnoAperto && (
         <>
           <div className="mt-4 mb-3 border-t border-border" />
           <button
