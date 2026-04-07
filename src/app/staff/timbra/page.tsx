@@ -568,6 +568,7 @@ function GeoFuoriSede({
   turnoAperto,
   tipoTimbra,
   onTimbraRemoto,
+  onUscitaForzata,
 }: {
   risultato: RisultatoGeo;
   timbraturaRemotaAbilitata: boolean;
