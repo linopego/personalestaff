@@ -118,16 +118,18 @@ function buildGiornoData(data: string, allTimbrature: TimbraturaStorico[], oggi:
   const entrata = ts.find((t) => t.tipo === "Entrata");
   let uscita = ts.find((t) => t.tipo === "Uscita");
 
-  // Se c'è un'entrata senza uscita nello stesso giorno, cerca l'uscita nel giorno dopo (turno notturno)
-  let uscitaGiornoSuccessivo: TimbraturaStorico | undefined;
+  // Se c'è un'entrata senza uscita nello stesso giorno, cerca la prima uscita
+  // nei giorni successivi (turno notturno o uscita forzata giorni dopo)
+  let uscitaSuccessiva: TimbraturaStorico | undefined;
   if (entrata && !uscita) {
-    const nextDate = new Date(parseDate(data));
-    nextDate.setDate(nextDate.getDate() + 1);
-    const nextDateStr = isoDate(nextDate);
-    const nextDayTimb = allTimbrature.filter((t) => t.data === nextDateStr);
-    uscitaGiornoSuccessivo = nextDayTimb.find((t) => t.tipo === "Uscita" && t.orario < (entrata?.orario || "24:00"));
-    if (uscitaGiornoSuccessivo) {
-      uscita = uscitaGiornoSuccessivo;
+    // Cerca in tutte le timbrature la prima uscita con data > entrata
+    const entrataTimestamp = new Date(`${entrata.data}T${entrata.orario}`).getTime();
+    uscitaSuccessiva = allTimbrature
+      .filter((t) => t.tipo === "Uscita" && t.data > data)
+      .sort((a, b) => a.data.localeCompare(b.data) || a.orario.localeCompare(b.orario))
+      .find((t) => new Date(`${t.data}T${t.orario}`).getTime() > entrataTimestamp);
+    if (uscitaSuccessiva) {
+      uscita = uscitaSuccessiva;
     }
   }
 
@@ -135,13 +137,20 @@ function buildGiornoData(data: string, allTimbrature: TimbraturaStorico[], oggi:
   let turnoAperto = false;
 
   if (entrata && uscita) {
-    oreTurno = calcolaOreTurno(entrata.orario, uscita.orario);
+    if (uscitaSuccessiva) {
+      // Cross-day: usa timestamp completo
+      const eMs = new Date(`${entrata.data}T${entrata.orario}`).getTime();
+      const uMs = new Date(`${uscita.data}T${uscita.orario}`).getTime();
+      oreTurno = Math.round(((uMs - eMs) / 3600000) * 100) / 100;
+    } else {
+      oreTurno = calcolaOreTurno(entrata.orario, uscita.orario);
+    }
   } else if (entrata && !uscita) {
     turnoAperto = true;
   }
 
-  // Includi l'uscita del giorno dopo nella lista visiva
-  const timbratureVisive = uscitaGiornoSuccessivo ? [...ts, uscitaGiornoSuccessivo] : ts;
+  // Includi l'uscita successiva nella lista visiva
+  const timbratureVisive = uscitaSuccessiva ? [...ts, uscitaSuccessiva] : ts;
 
   return { data, label: formatLabel(data), isOggi: data === oggi, timbrature: timbratureVisive, oreTurno, turnoAperto };
 }
