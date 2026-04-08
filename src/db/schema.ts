@@ -173,3 +173,25 @@ export const visibilitySettings = pgTable("visibility_settings", {
   creataDa: integer("creata_da").notNull().references(() => utenti.id),
   creataAt: timestamp("creata_at").defaultNow().notNull(),
 });
+
+/* ── Push Subscriptions ── */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => utenti.id),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/* ── Notifiche ── */
+export const notifiche = pgTable("notifiche", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => utenti.id),
+  tipo: varchar("tipo", { length: 30 }).notNull(), // turno_assegnato, conferma_richiesta, turno_modificato, promemoria, turno_annullato, conferma_ricevuta, rifiuto_ricevuto, timbratura_anomala
+  titolo: text("titolo").notNull(),
+  messaggio: text("messaggio").notNull(),
+  link: text("link"),
+  letto: boolean("letto").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import AppLogo from "@/components/app-logo";
+import NotificationBell from "@/components/notification-bell";
 import { useAuth } from "@/lib/auth-context";
 
 const NAV_ITEMS = [
@@ -50,7 +51,8 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <span className="text-base font-semibold text-foreground hidden sm:block">Creazioni SRL</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 relative">
+          <NotificationBell />
           <div className="text-right">
             <p className="text-sm font-medium text-foreground">{user.name}</p>
             <p className="text-[11px] text-text-muted">Dipendente</p>
