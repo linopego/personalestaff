@@ -6,7 +6,7 @@ const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
 const MANSIONE_COLORS: Record<string, string> = { barista: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", sala: "bg-blue-500/15 text-blue-400", guardaroba: "bg-purple-500/15 text-purple-400" };
 
-interface MioEvento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; note: string|null; assegnazioneId: number; statoConferma: string; }
+interface MioEvento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; postazione: string|null; note: string|null; assegnazioneId: number; statoConferma: string; }
 
 function fmtData(iso: string) { const d = new Date(iso + "T00:00:00"); return `${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}`; }
 
@@ -93,9 +93,14 @@ export default function StaffTurniPage() {
                 {e.orarioInizio || e.oraInizio || "—"} – {e.orarioFine || e.oraFine || "—"}
               </p>
 
-              {e.mansione && (
-                <span className={`inline-flex mt-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${MANSIONE_COLORS[e.mansione.toLowerCase()] || "bg-zinc-500/15 text-zinc-400"}`}>{e.mansione}</span>
-              )}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {e.mansione && (
+                  <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${MANSIONE_COLORS[e.mansione.toLowerCase()] || "bg-zinc-500/15 text-zinc-400"}`}>{e.mansione}</span>
+                )}
+                {e.postazione && (
+                  <span className="inline-flex rounded-full bg-zinc-500/15 px-2.5 py-0.5 text-xs font-medium text-zinc-400">{e.postazione}</span>
+                )}
+              </div>
               {e.note && <p className="text-xs text-text-muted italic mt-1">{e.note}</p>}
 
               {/* Pulsanti conferma/rifiuta */}

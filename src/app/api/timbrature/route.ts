@@ -80,16 +80,38 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { sedeId, tipo, lat, lng, tipoAccesso, motivoRemoto } = body;
   const isRemoto = tipoAccesso === "remoto";
+  const isForzata = motivoRemoto?.includes("Uscita forzata");
+  const userId = parseInt(user.id);
 
   if (!tipo || lat == null || lng == null) {
     return NextResponse.json({ error: "Dati mancanti" }, { status: 400 });
   }
 
-  const userId = parseInt(user.id);
+  // Uscita forzata: sempre permessa, skip tutto
+  if (isForzata && tipo === "Uscita") {
+    // Cooldown check
+    const [ultima] = await db
+      .select({ orario: timbrature.orario })
+      .from(timbrature)
+      .where(eq(timbrature.userId, userId))
+      .orderBy(desc(timbrature.orario))
+      .limit(1);
 
-  const isForzata = isRemoto && tipo === "Uscita" && motivoRemoto?.includes("Uscita forzata");
+    if (ultima) {
+      const secondiFa = (Date.now() - new Date(ultima.orario).getTime()) / 1000;
+      if (secondiFa < 60) {
+        return NextResponse.json({ error: `Attendi ${Math.ceil(60 - secondiFa)} secondi` }, { status: 429 });
+      }
+    }
 
-  if (isRemoto && !isForzata) {
+    const [nuova] = await db.insert(timbrature).values({
+      userId, sedeId: null, tipo: "Uscita", orario: new Date(),
+      lat, lng, tipoAccesso: "remoto", motivoRemoto: motivoRemoto || "Uscita forzata",
+    }).returning();
+    return NextResponse.json(nuova, { status: 201 });
+  }
+
+  if (isRemoto) {
     // Verifica che il dipendente abbia timbratura remota abilitata (non per uscita forzata)
     const [dbUser] = await db.select({ timbraturaRemotaAbilitata: utenti.timbraturaRemotaAbilitata })
       .from(utenti).where(eq(utenti.id, userId)).limit(1);
