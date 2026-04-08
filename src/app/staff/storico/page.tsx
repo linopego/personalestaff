@@ -24,9 +24,9 @@ interface TimbraturaStorico {
 interface ApiTimbratura {
   id: number;
   userId: number;
-  sedeId: number;
+  sedeId: number | null;
   tipo: string;
-  orario: string;       // ISO timestamp string
+  orario: string;
   lat: number;
   lng: number;
   modificataManualmente: boolean;
@@ -34,7 +34,7 @@ interface ApiTimbratura {
   modifiedBy: number | null;
   dipNome: string;
   dipCognome: string;
-  sedeNome: string;
+  sedeNome: string | null;
   tipoAccesso?: string;
   motivoRemoto?: string | null;
 }
@@ -68,7 +68,7 @@ function transformApiTimbratura(t: ApiTimbratura): TimbraturaStorico {
     data,
     orario,
     tipo: t.tipo as "Entrata" | "Uscita",
-    sede: t.sedeNome,
+    sede: t.sedeNome || "Remoto",
     lat: t.lat,
     lng: t.lng,
     modificata: t.modificataManualmente,
