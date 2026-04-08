@@ -25,10 +25,24 @@ function getMonday(d: Date) { const day = d.getDay(); const diff = d.getDate() -
 function dayOfWeek(iso: string) { return new Date(iso + "T00:00:00").getDay(); }
 function fmtGiorno(iso: string) { const d = new Date(iso + "T00:00:00"); return `${d.getDate()} ${MESI[d.getMonth()].slice(0,3)}`; }
 
+interface Personale { nome: string; cognome: string; mansione: string|null; postazione: string|null; orarioInizio: string|null; orarioFine: string|null; }
+interface EventoDettaglio { nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; descrizione: string|null; personale: Personale[]; }
+
 export default function StaffEventiPage() {
   const [eventi, setEventi] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [selectedEvento, setSelectedEvento] = useState<EventoDettaglio|null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  async function openEvento(id: number) {
+    setLoadingDetail(true);
+    try {
+      const res = await fetch(`/api/eventi/tutti/${id}`);
+      if (res.ok) setSelectedEvento(await res.json());
+    } catch {}
+    setLoadingDetail(false);
+  }
 
   const monday = useMemo(() => { const m = getMonday(new Date()); m.setDate(m.getDate() + weekOffset * 7); return m; }, [weekOffset]);
   const sunday = useMemo(() => { const s = new Date(monday); s.setDate(s.getDate() + 6); return s; }, [monday]);
@@ -95,15 +109,67 @@ export default function StaffEventiPage() {
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {g.eventi.map(e => (
-                    <div key={e.id} className={`rounded-lg px-2.5 py-1.5 text-xs border ${sedeStyle(e.sede)}`}>
+                    <button key={e.id} onClick={() => openEvento(e.id)} className={`rounded-lg px-2.5 py-1.5 text-xs border text-left active:scale-[0.97] transition-all ${sedeStyle(e.sede)}`}>
                       <p className={`font-semibold ${sedeTextColor(e.sede)}`}>{e.nome}</p>
                       <p className="text-text-muted">{e.sede} {e.oraInizio && `· ${e.oraInizio}`} · {e.assegnati}p</p>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}
             </div>
           ))}
+        </div>
+      )}
+      {/* ═══ BOTTOM SHEET DETTAGLIO ═══ */}
+      {(selectedEvento || loadingDetail) && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={() => { setSelectedEvento(null); setLoadingDetail(false); }}>
+          <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border-t sm:border border-border bg-card-bg animate-slide-up max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="h-1 w-10 rounded-full bg-border" />
+            </div>
+            {loadingDetail ? (
+              <div className="flex items-center justify-center py-12"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>
+            ) : selectedEvento && (
+              <div className="flex-1 overflow-y-auto">
+                <div className="px-5 pt-4 pb-3 border-b border-border">
+                  <h2 className="text-lg font-bold text-foreground">{selectedEvento.nome}</h2>
+                  <p className="text-sm text-text-muted">{selectedEvento.sede} {selectedEvento.oraInizio && `· ${selectedEvento.oraInizio}`}{selectedEvento.oraFine && ` – ${selectedEvento.oraFine}`}</p>
+                  {selectedEvento.descrizione && <p className="text-xs text-text-muted mt-1 italic">{selectedEvento.descrizione}</p>}
+                </div>
+                <div className="px-5 py-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">{selectedEvento.personale.length} persone convocate</p>
+                  {selectedEvento.personale.length === 0 ? (
+                    <p className="text-sm text-text-muted py-4">Nessun personale assegnato.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedEvento.personale.sort((a, b) => (a.orarioInizio||"").localeCompare(b.orarioInizio||"")).map((p, i) => (
+                        <div key={i} className="flex items-center gap-2.5 rounded-lg bg-sidebar-bg px-3 py-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-[10px] font-bold text-accent">
+                            {p.nome[0]}{p.cognome[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground">{p.nome} {p.cognome}</p>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {(p.orarioInizio || p.orarioFine) && (
+                                <span className="text-xs text-text-muted font-mono">{p.orarioInizio||"—"} – {p.orarioFine === "chiusura" ? "Chiusura" : (p.orarioFine||"—")}</span>
+                              )}
+                              {p.mansione && <span className="text-[10px] rounded-full bg-accent/10 text-accent px-1.5 py-0.5">{p.mansione}</span>}
+                              {p.postazione && <span className="text-[10px] rounded-full bg-zinc-500/15 text-zinc-400 px-1.5 py-0.5">{p.postazione}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="px-5 pb-5 pt-2">
+                  <button onClick={() => setSelectedEvento(null)} className="w-full rounded-xl border border-border py-3 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[48px]">
+                    Chiudi
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
