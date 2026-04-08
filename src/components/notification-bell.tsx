@@ -17,7 +17,10 @@ export default function NotificationBell() {
   const fetchNotifiche = useCallback(async () => {
     try {
       const res = await fetch("/api/notifiche");
-      if (res.ok) setNotifiche(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setNotifiche(data);
+      }
     } catch {}
   }, []);
 
