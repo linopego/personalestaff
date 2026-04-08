@@ -106,22 +106,44 @@ function calcolaOreTurno(entrata: string, uscita: string): number {
   const [eh, em] = entrata.split(":").map(Number);
   const [uh, um] = uscita.split(":").map(Number);
   let diff = uh * 60 + um - (eh * 60 + em);
-  if (diff < 0) diff += 24 * 60;
+  if (diff < 0) diff += 24 * 60; // turno notturno
   return Math.round((diff / 60) * 100) / 100;
 }
 
-function buildGiornoData(data: string, timbrature: TimbraturaStorico[], oggi: string): GiornoData {
-  const ts = timbrature.filter((t) => t.data === data).sort((a, b) => a.orario.localeCompare(b.orario));
+function buildGiornoData(data: string, allTimbrature: TimbraturaStorico[], oggi: string): GiornoData {
+  // Timbrature di questo giorno
+  const ts = allTimbrature.filter((t) => t.data === data).sort((a, b) => a.orario.localeCompare(b.orario));
+
+  // Cerca entrata e uscita
   const entrata = ts.find((t) => t.tipo === "Entrata");
-  const uscita = ts.find((t) => t.tipo === "Uscita");
+  let uscita = ts.find((t) => t.tipo === "Uscita");
+
+  // Se c'è un'entrata senza uscita nello stesso giorno, cerca l'uscita nel giorno dopo (turno notturno)
+  let uscitaGiornoSuccessivo: TimbraturaStorico | undefined;
+  if (entrata && !uscita) {
+    const nextDate = new Date(parseDate(data));
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nextDateStr = isoDate(nextDate);
+    const nextDayTimb = allTimbrature.filter((t) => t.data === nextDateStr);
+    uscitaGiornoSuccessivo = nextDayTimb.find((t) => t.tipo === "Uscita" && t.orario < (entrata?.orario || "24:00"));
+    if (uscitaGiornoSuccessivo) {
+      uscita = uscitaGiornoSuccessivo;
+    }
+  }
+
   let oreTurno: number | null = null;
   let turnoAperto = false;
+
   if (entrata && uscita) {
     oreTurno = calcolaOreTurno(entrata.orario, uscita.orario);
   } else if (entrata && !uscita) {
     turnoAperto = true;
   }
-  return { data, label: formatLabel(data), isOggi: data === oggi, timbrature: ts, oreTurno, turnoAperto };
+
+  // Includi l'uscita del giorno dopo nella lista visiva
+  const timbratureVisive = uscitaGiornoSuccessivo ? [...ts, uscitaGiornoSuccessivo] : ts;
+
+  return { data, label: formatLabel(data), isOggi: data === oggi, timbrature: timbratureVisive, oreTurno, turnoAperto };
 }
 
 /* ═══════════════════════════════════════════
@@ -460,6 +482,9 @@ function GiornoCard({ giorno, onDetail }: { giorno: GiornoData; onDetail: (t: Ti
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-base font-semibold text-foreground tabular-nums">{t.orario}</p>
+                      {t.data !== giorno.data && (
+                        <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-accent">{t.data.slice(8)}/{t.data.slice(5,7)}</span>
+                      )}
                       {isRemoto && (
                         <span className="rounded bg-zinc-500/20 px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 uppercase">Remoto</span>
                       )}
