@@ -19,6 +19,7 @@ interface MeData {
   oreSettimanali: number;
   dataAssunzione: string | null;
   attivo: boolean;
+  avatarUrl: string | null;
   riepilogo: {
     oreSett: number;
     oreMese: number;
