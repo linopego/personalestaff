@@ -304,6 +304,85 @@ function LoadingSpinner() {
   );
 }
 
+function getMonday(d: Date) { const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.getFullYear(), d.getMonth(), diff); }
+
+/* ─── Export Buttons ─── */
+
+function ExportButtons() {
+  const [showExport, setShowExport] = useState(false);
+  const [exportInizio, setExportInizio] = useState("");
+  const [exportFine, setExportFine] = useState("");
+
+  function initDates() {
+    const oggi = new Date();
+    const lun = getMonday(oggi);
+    // Default: settimana corrente
+    setExportInizio(toDateString(lun));
+    const dom = new Date(lun); dom.setDate(dom.getDate() + 6);
+    setExportFine(toDateString(dom));
+    setShowExport(true);
+  }
+
+  function setSettimana(offset: number) {
+    const oggi = new Date();
+    const lun = getMonday(oggi);
+    lun.setDate(lun.getDate() + offset * 7);
+    setExportInizio(toDateString(lun));
+    const dom = new Date(lun); dom.setDate(dom.getDate() + 6);
+    setExportFine(toDateString(dom));
+  }
+
+  const downloadUrl = `/api/export?tipo=completo&dataInizio=${exportInizio}&dataFine=${exportFine}`;
+
+  return (
+    <>
+      <button onClick={initDates} className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white hover:bg-accent-hover transition-colors">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+        Esporta CSV
+      </button>
+
+      {showExport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowExport(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-border bg-card-bg shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h2 className="text-lg font-semibold text-foreground">Esporta CSV</h2>
+              <button onClick={() => setShowExport(false)} className="text-text-muted hover:text-foreground text-xl">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={() => setSettimana(-1)} className="rounded-lg border border-border px-3 py-1.5 text-xs text-text-muted hover:text-foreground">Sett. scorsa</button>
+                <button onClick={() => setSettimana(0)} className="rounded-lg border border-accent bg-accent/10 px-3 py-1.5 text-xs text-accent">Sett. corrente</button>
+                <button onClick={() => setSettimana(-2)} className="rounded-lg border border-border px-3 py-1.5 text-xs text-text-muted hover:text-foreground">2 sett. fa</button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-text-muted mb-1 block">Da</label>
+                  <input type="date" value={exportInizio} onChange={e => setExportInizio(e.target.value)} className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground" />
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted mb-1 block">A</label>
+                  <input type="date" value={exportFine} onChange={e => setExportFine(e.target.value)} className="w-full rounded-lg border border-border bg-sidebar-bg px-3 py-2 text-sm text-foreground" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <a href={downloadUrl} onClick={() => setShowExport(false)} className="flex items-center justify-center gap-2 rounded-lg bg-accent py-2.5 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">
+                  Scarica completo
+                </a>
+                <a href={`/api/export?tipo=timbrature&dataInizio=${exportInizio}&dataFine=${exportFine}`} onClick={() => setShowExport(false)} className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 text-xs font-medium text-text-muted hover:text-foreground transition-colors">
+                  Solo timbrature
+                </a>
+                <a href={`/api/export?tipo=turni&dataInizio=${exportInizio}&dataFine=${exportFine}`} onClick={() => setShowExport(false)} className="flex items-center justify-center gap-2 rounded-lg border border-border py-2 text-xs font-medium text-text-muted hover:text-foreground transition-colors">
+                  Solo eventi/turni
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ─── Dashboard ─── */
 
 export default function AdminDashboard() {
@@ -381,18 +460,7 @@ export default function AdminDashboard() {
             Panoramica presenze — {meseAnnoLabel}
           </p>
         </div>
-        <div className="flex gap-2">
-          <a href="/api/export?tipo=completo" className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white hover:bg-accent-hover transition-colors">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-            CSV Settimana
-          </a>
-          <a href="/api/export?tipo=timbrature" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-muted hover:text-foreground transition-colors">
-            Timbrature
-          </a>
-          <a href="/api/export?tipo=turni" className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-muted hover:text-foreground transition-colors">
-            Turni
-          </a>
-        </div>
+        <ExportButtons />
       </div>
 
       {/* ── Stat cards ── */}
