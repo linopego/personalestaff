@@ -3,11 +3,16 @@ import { db } from "@/db";
 import { pushSubscriptions, notifiche } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-webpush.setVapidDetails(
-  "mailto:admin@presenzestaff.it",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+let vapidConfigured = false;
+
+function ensureVapid() {
+  if (vapidConfigured) return;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) return;
+  webpush.setVapidDetails("mailto:admin@presenzestaff.it", publicKey, privateKey);
+  vapidConfigured = true;
+}
 
 /**
  * Invia una push notification a un utente e salva in DB.
@@ -28,7 +33,9 @@ export async function inviaNotifica({
   // Salva notifica in DB
   await db.insert(notifiche).values({ userId, tipo, titolo, messaggio, link: link || null });
 
-  // Manda push a tutti i dispositivi dell'utente
+  // Manda push
+  ensureVapid();
+  if (!vapidConfigured) return;
   const subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
 
   for (const sub of subs) {
