@@ -32,10 +32,10 @@ export async function GET(req: NextRequest) {
 
   const dataInizio = isoLocal(lunediPrecedente);
   const dataFine = isoLocal(domenicaPrecedente);
-  const inizioUTC = new Date(dataInizio + "T00:00:00Z");
-  inizioUTC.setHours(inizioUTC.getHours() - 2);
-  const fineUTC = new Date(dataFine + "T23:59:59Z");
-  fineUTC.setHours(fineUTC.getHours() + 2);
+  // Italia: UTC+1 (CET inverno) o UTC+2 (CEST estate)
+  // Mezzanotte locale = 22:00 UTC (CEST) o 23:00 UTC (CET)
+  const inizioUTC = new Date(dataInizio + "T00:00:00+02:00"); // mezzanotte CEST
+  const fineUTC = new Date(dataFine + "T23:59:59+01:00"); // 23:59 CET (più largo)
 
   // Fetch dipendenti
   const dips = await db.select({ id: utenti.id, nome: utenti.nome, cognome: utenti.cognome, tipoContratto: utenti.tipoContratto, oreSettimanali: utenti.oreSettimanali })
@@ -59,7 +59,10 @@ export async function GET(req: NextRequest) {
     csv += `Dipendente,Data,Ora,Tipo,Sede,Modalità\n`;
     for (const t of timbr) {
       const d = new Date(t.orario);
-      csv += `"${t.dipNome} ${t.dipCognome}",${isoLocal(d)},${d.toLocaleTimeString("it-IT", { hour12: false, hour: "2-digit", minute: "2-digit" })},${t.tipo},${t.sedeNome || "Remoto"},${t.tipoAccesso || "sede"}\n`;
+      // Converti in ora italiana (UTC+2 CEST o UTC+1 CET)
+      const oraIt = d.toLocaleTimeString("it-IT", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+      const dataIt = d.toLocaleDateString("sv-SE", { timeZone: "Europe/Rome" });
+      csv += `"${t.dipNome} ${t.dipCognome}",${dataIt},${oraIt},${t.tipo},${t.sedeNome || "Remoto"},${t.tipoAccesso || "sede"}\n`;
     }
 
     // Calcola ore per dipendente
