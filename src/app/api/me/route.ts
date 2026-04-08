@@ -30,20 +30,25 @@ export async function GET() {
   if (!row) return NextResponse.json({ error: "Utente non trovato" }, { status: 404 });
 
   // ── Riepilogo Rapido ──────────────────────────────────────────────────────
-  // Settimana corrente (lunedì–domenica)
-  const oggi = new Date();
-  const giornoSettimana = oggi.getDay(); // 0=dom, 1=lun, …
+  // Calcola date in timezone italiana
+  // Vercel è UTC — usiamo offset fisso +2h (CEST estate) per sicurezza
+  const nowIt = new Date(Date.now() + 2 * 3600000); // approssimazione ora italiana
+  const oggiStr = `${nowIt.getUTCFullYear()}-${String(nowIt.getUTCMonth() + 1).padStart(2, "0")}-${String(nowIt.getUTCDate()).padStart(2, "0")}`;
+
+  // Settimana corrente
+  const oggiDate = new Date(oggiStr + "T00:00:00+02:00"); // mezzanotte italiana
+  const giornoSettimana = oggiDate.getDay();
   const offsetLunedi = giornoSettimana === 0 ? -6 : 1 - giornoSettimana;
-  const lunedi = new Date(oggi);
-  lunedi.setDate(oggi.getDate() + offsetLunedi);
-  lunedi.setHours(0, 0, 0, 0);
+  const lunedi = new Date(oggiDate);
+  lunedi.setDate(oggiDate.getDate() + offsetLunedi);
   const domenica = new Date(lunedi);
   domenica.setDate(lunedi.getDate() + 6);
-  domenica.setHours(23, 59, 59, 999);
+  const domenicaFine = new Date(domenica.getTime() + 24 * 3600000 - 1);
 
   // Mese corrente
-  const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1, 0, 0, 0, 0);
-  const fineMese = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 0, 23, 59, 59, 999);
+  const inizioMese = new Date(`${nowIt.getUTCFullYear()}-${String(nowIt.getUTCMonth() + 1).padStart(2, "0")}-01T00:00:00+02:00`);
+  const ultimoGiorno = new Date(nowIt.getUTCFullYear(), nowIt.getUTCMonth() + 1, 0).getDate();
+  const fineMese = new Date(`${nowIt.getUTCFullYear()}-${String(nowIt.getUTCMonth() + 1).padStart(2, "0")}-${ultimoGiorno}T23:59:59+01:00`);
 
   const userId = parseInt(user.id);
 

@@ -32,18 +32,16 @@ export async function GET(req: NextRequest) {
 
   if (sedeId) conditions.push(eq(timbrature.sedeId, parseInt(sedeId)));
   if (tipo) conditions.push(eq(timbrature.tipo, tipo));
-  // Filtri data: il client manda YYYY-MM-DD in timezone locale.
-  // Usiamo un range largo per coprire sia CET (+01:00) che CEST (+02:00)
+  // Filtri data: YYYY-MM-DD locale → UTC. Italia è UTC+1 (inverno) o UTC+2 (estate)
+  // Mezzanotte locale = 22:00 o 23:00 UTC del giorno prima
   if (dataInizio) {
-    // Mezzanotte del giorno in CET = 23:00 del giorno prima in UTC (worst case)
     const d = new Date(dataInizio + "T00:00:00Z");
-    d.setHours(d.getHours() - 1); // -1h per coprire CEST
+    d.setHours(d.getHours() - 2); // -2h per coprire CEST (UTC+2)
     conditions.push(gte(timbrature.orario, d));
   }
   if (dataFine) {
-    // Fine giornata in CET = 22:59 UTC del giorno dopo (worst case)
     const d = new Date(dataFine + "T23:59:59Z");
-    d.setHours(d.getHours() + 1); // +1h per coprire CET
+    d.setHours(d.getHours() + 2); // +2h per coprire CET (UTC+1)
     conditions.push(lte(timbrature.orario, d));
   }
 
