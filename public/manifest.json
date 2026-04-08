@@ -1,6 +1,6 @@
 {
-  "name": "PresenzApp",
-  "short_name": "PresenzApp",
+  "name": "Creazioni Staff",
+  "short_name": "Creazioni Staff",
   "description": "Gestione presenze semplice ed efficiente",
   "start_url": "/login",
   "display": "standalone",
