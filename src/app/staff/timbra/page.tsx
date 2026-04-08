@@ -83,22 +83,31 @@ export default function TimbraPage() {
   const [matchedSedeId, setMatchedSedeId] = useState<number | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
 
-  // Timbrature di oggi dal DB
+  // Timbrature recenti dal DB (ultimi 7gg per trovare turni aperti)
   const [timbrature, setTimbrature] = useState<Timbratura[]>([]);
+  const [timbratureOggi, setTimbratureOggi] = useState<Timbratura[]>([]);
   useEffect(() => {
-    const oggi = new Date().toLocaleDateString("sv-SE");
-    fetch(`/api/timbrature?dataInizio=${oggi}&dataFine=${oggi}`)
+    const now = new Date();
+    const oggi = now.toLocaleDateString("sv-SE");
+    const sette = new Date(now); sette.setDate(sette.getDate() - 7);
+    const dataInizio = sette.toLocaleDateString("sv-SE");
+    fetch(`/api/timbrature?dataInizio=${dataInizio}&dataFine=${oggi}`)
       .then(r => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
-          setTimbrature(data.map((t: Record<string, unknown>) => ({
+          const mapped = data.map((t: Record<string, unknown>) => ({
             tipo: t.tipo as "Entrata" | "Uscita",
             orario: new Date(t.orario as string).toLocaleTimeString("it-IT", { hour12: false }),
-            sede: t.sedeNome as string,
+            sede: (t.sedeNome as string) || "Remoto",
             lat: t.lat as number, lng: t.lng as number,
             timestamp: new Date(t.orario as string).getTime(),
             tipoAccesso: t.tipoAccesso as string | undefined,
-          })));
+          }));
+          setTimbrature(mapped);
+          // Filtra solo oggi per il riquadro turno
+          const oggiStart = new Date(oggi + "T00:00:00").getTime();
+          const oggiFine = new Date(oggi + "T23:59:59").getTime();
+          setTimbratureOggi(mapped.filter(t => t.timestamp >= oggiStart && t.timestamp <= oggiFine));
         }
       }).catch(() => {});
   }, []);
@@ -358,8 +367,13 @@ export default function TimbraPage() {
       {/* ── Stato turno ── */}
       <div className="rounded-2xl border border-border bg-card-bg p-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-3">Turno di oggi</p>
-        {timbrature.length === 0 && (
+        {timbratureOggi.length === 0 && !turnoAperto && (
           <p className="text-base text-text-muted">Nessuna timbratura oggi</p>
+        )}
+        {turnoAperto && !timbratureOggi.some(t => t.tipo === "Entrata") && (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2 mb-2">
+            <p className="text-xs text-amber-400 font-medium">⚠ Turno aperto da un giorno precedente — usa l&apos;uscita forzata per chiuderlo</p>
+          </div>
         )}
         {ultimaEntrata && !uscitaDopoEntrata && (
           <div className="flex items-center justify-between">
@@ -395,8 +409,8 @@ export default function TimbraPage() {
             </div>
           </div>
         )}
-        {timbrature.length > 0 && (
-          <p className="text-xs text-text-muted mt-2">{timbrature.length} timbrature oggi</p>
+        {timbratureOggi.length > 0 && (
+          <p className="text-xs text-text-muted mt-2">{timbratureOggi.length} timbrature oggi</p>
         )}
       </div>
 
