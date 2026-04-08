@@ -195,25 +195,8 @@ export default function ProfiloPage() {
       {/* ── Hero ── */}
       <div className="relative bg-gradient-to-b from-sidebar-bg via-accent/20 to-transparent px-4 pt-8 pb-6 sm:px-6">
         <div className="flex flex-col items-center text-center">
-          <div className="relative">
-            {meData.avatarUrl ? (
-              <img src={meData.avatarUrl} alt={fullName} className="h-20 w-20 rounded-full object-cover shadow-lg" />
-            ) : (
-              <div className={`flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${avatarColor(fullName)} text-2xl font-bold text-white shadow-lg`}>
-                {initials}
-              </div>
-            )}
-            <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-accent text-white shadow-lg active:scale-90 transition-all">
-              <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-              {uploading ? (
-                <div className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent" />
-              ) : (
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" /></svg>
-              )}
-            </label>
-            {meData.avatarUrl && (
-              <button onClick={removePhoto} className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-[8px] shadow">✕</button>
-            )}
+          <div className={`flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${avatarColor(fullName)} text-2xl font-bold text-white shadow-lg`}>
+            {initials}
           </div>
           <h1 className="mt-3 text-xl font-bold text-foreground">{fullName}</h1>
           <div className="mt-2 flex items-center gap-2 flex-wrap justify-center">
