@@ -22,6 +22,7 @@ export async function GET() {
       dataAssunzione: utenti.dataAssunzione,
       attivo: utenti.attivo,
       timbraturaRemotaAbilitata: utenti.timbraturaRemotaAbilitata,
+      avatarUrl: utenti.avatarUrl,
     })
     .from(utenti)
     .where(eq(utenti.id, parseInt(user.id)))
