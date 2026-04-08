@@ -9,12 +9,15 @@ export async function GET() {
   const user = await getSession();
   if (!user) return unauthorized();
 
-  const result = await db.select().from(notifiche)
-    .where(eq(notifiche.userId, parseInt(user.id)))
-    .orderBy(desc(notifiche.createdAt))
-    .limit(50);
-
-  return NextResponse.json(result);
+  try {
+    const result = await db.select().from(notifiche)
+      .where(eq(notifiche.userId, parseInt(user.id)))
+      .orderBy(desc(notifiche.createdAt))
+      .limit(50);
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json([]);
+  }
 }
 
 // PUT: segna come lette
