@@ -106,10 +106,18 @@ export default function ProfiloPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
+  const [errorMsg, setErrorMsg] = useState("");
   useEffect(() => {
     fetch("/api/me")
-      .then((r) => r.json())
-      .then((data) => setMeData(data))
+      .then((r) => {
+        if (!r.ok) throw new Error(`API error ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setMeData(data);
+      })
+      .catch((e) => setErrorMsg(String(e.message || e)))
       .finally(() => setLoadingMe(false));
   }, []);
 
@@ -131,6 +139,7 @@ export default function ProfiloPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24">
         <p className="text-sm text-text-muted">Impossibile caricare il profilo.</p>
+        {errorMsg && <p className="text-xs text-red-400 mt-2">{errorMsg}</p>}
       </div>
     );
   }

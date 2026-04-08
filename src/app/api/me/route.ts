@@ -9,6 +9,7 @@ export async function GET() {
   const user = await getSession();
   if (!user) return unauthorized();
 
+  try {
   const [row] = await db
     .select({
       id: utenti.id,
@@ -102,4 +103,7 @@ export async function GET() {
       giorniMese: calcolaGiorni(timbratureMese),
     },
   });
+  } catch (e) {
+    return NextResponse.json({ error: String((e as Error).message) }, { status: 500 });
+  }
 }
