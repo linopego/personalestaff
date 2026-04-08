@@ -20,18 +20,28 @@ export async function GET(req: NextRequest) {
   if (user.ruolo !== "admin") return forbidden();
 
   const { searchParams } = new URL(req.url);
-  const tipo = searchParams.get("tipo") || "completo"; // completo, timbrature, turni
+  const tipo = searchParams.get("tipo") || "completo";
+  const customInizio = searchParams.get("dataInizio");
+  const customFine = searchParams.get("dataFine");
 
-  // Settimana precedente
-  const oggi = new Date();
-  const lunediCorrente = getMonday(oggi);
-  const lunediPrecedente = new Date(lunediCorrente);
-  lunediPrecedente.setDate(lunediPrecedente.getDate() - 7);
-  const domenicaPrecedente = new Date(lunediPrecedente);
-  domenicaPrecedente.setDate(domenicaPrecedente.getDate() + 6);
+  let dataInizio: string;
+  let dataFine: string;
 
-  const dataInizio = isoLocal(lunediPrecedente);
-  const dataFine = isoLocal(domenicaPrecedente);
+  if (customInizio && customFine) {
+    dataInizio = customInizio;
+    dataFine = customFine;
+  } else {
+    // Default: settimana precedente
+    const oggi = new Date();
+    const lunediCorrente = getMonday(oggi);
+    const lunediPrecedente = new Date(lunediCorrente);
+    lunediPrecedente.setDate(lunediPrecedente.getDate() - 7);
+    const domenicaPrecedente = new Date(lunediPrecedente);
+    domenicaPrecedente.setDate(domenicaPrecedente.getDate() + 6);
+    dataInizio = isoLocal(lunediPrecedente);
+    dataFine = isoLocal(domenicaPrecedente);
+  }
+
   // Italia: UTC+1 (CET inverno) o UTC+2 (CEST estate)
   // Mezzanotte locale = 22:00 UTC (CEST) o 23:00 UTC (CET)
   const inizioUTC = new Date(dataInizio + "T00:00:00+02:00"); // mezzanotte CEST
