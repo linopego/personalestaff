@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { useTheme } from "@/lib/theme-context";
+import NotificationBell from "./notification-bell";
 
 interface AdminHeaderProps {
   onMenuToggle: () => void;
@@ -28,7 +29,8 @@ export default function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
       <div className="hidden lg:block" />
 
       {/* User info */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 relative">
+        <NotificationBell />
         <button
           onClick={toggleTheme}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-text-muted hover:bg-white/5 hover:text-foreground transition-colors"
