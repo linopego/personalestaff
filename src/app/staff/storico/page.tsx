@@ -1,158 +1,76 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import VisibilityBanner from "@/components/visibility-banner";
 
 /* ═══════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════ */
 
-interface TimbraturaStorico {
-  id: number;
-  data: string;       // YYYY-MM-DD
-  orario: string;     // HH:mm
-  tipo: "Entrata" | "Uscita";
-  sede: string;
-  lat: number;
-  lng: number;
-  modificata: boolean;
-  noteModifica?: string;
-  tipoAccesso?: string;
-  motivoRemoto?: string;
+interface Timb {
+  id: number; data: string; orario: string; tipo: "Entrata" | "Uscita";
+  sede: string; lat: number; lng: number; modificata: boolean;
+  noteModifica?: string; tipoAccesso?: string; motivoRemoto?: string;
+  timestamp: number;
 }
 
-interface ApiTimbratura {
-  id: number;
-  userId: number;
-  sedeId: number | null;
-  tipo: string;
-  orario: string;
-  lat: number;
-  lng: number;
-  modificataManualmente: boolean;
-  noteModifica: string | null;
-  modifiedBy: number | null;
-  dipNome: string;
-  dipCognome: string;
-  sedeNome: string | null;
-  tipoAccesso?: string;
-  motivoRemoto?: string | null;
-}
-
-interface GiornoData {
-  data: string;
-  label: string;       // "Lunedì 1 Aprile"
-  isOggi: boolean;
-  timbrature: TimbraturaStorico[];
-  oreTurno: number | null;
-  turnoAperto: boolean;
+interface Turno {
+  entrata: Timb;
+  uscita: Timb | null;
+  ore: number | null;
 }
 
 /* ═══════════════════════════════════════════
    CONSTANTS
    ═══════════════════════════════════════════ */
 
-const GIORNI_NOME = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
-const MESI_NOME = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+
+function fmtData(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return `${GIORNI[d.getDay()]} ${d.getDate()} ${MESI[d.getMonth()]}`;
+}
+
+function fmtDataCorta(iso: string) {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
+function isoD(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+
+function getMonday(d: Date) { const day = d.getDay(); const diff = d.getDate() - day + (day === 0 ? -6 : 1); return new Date(d.getFullYear(), d.getMonth(), diff); }
 
 /* ═══════════════════════════════════════════
-   API TRANSFORM
+   PARSE TURNI — paira entrata/uscita in ordine cronologico
    ═══════════════════════════════════════════ */
 
-function transformApiTimbratura(t: ApiTimbratura): TimbraturaStorico {
-  const dt = new Date(t.orario);
-  const data = isoDate(dt);
-  const orario = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
-  return {
-    id: t.id,
-    data,
-    orario,
-    tipo: t.tipo as "Entrata" | "Uscita",
-    sede: t.sedeNome || "Remoto",
-    lat: t.lat,
-    lng: t.lng,
-    modificata: t.modificataManualmente,
-    noteModifica: t.noteModifica ?? undefined,
-    tipoAccesso: t.tipoAccesso,
-    motivoRemoto: t.motivoRemoto ?? undefined,
-  };
-}
-
-/* ═══════════════════════════════════════════
-   DATE HELPERS
-   ═══════════════════════════════════════════ */
-
-function parseDate(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
-function isoDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function formatLabel(iso: string) {
-  const d = parseDate(iso);
-  return `${GIORNI_NOME[d.getDay()]} ${d.getDate()} ${MESI_NOME[d.getMonth()]}`;
-}
-
-function getMonday(d: Date) {
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.getFullYear(), d.getMonth(), diff);
-}
-
-function calcolaOreTurno(entrata: string, uscita: string): number {
-  const [eh, em] = entrata.split(":").map(Number);
-  const [uh, um] = uscita.split(":").map(Number);
-  let diff = uh * 60 + um - (eh * 60 + em);
-  if (diff < 0) diff += 24 * 60; // turno notturno
-  return Math.round((diff / 60) * 100) / 100;
-}
-
-function buildGiornoData(data: string, allTimbrature: TimbraturaStorico[], oggi: string): GiornoData {
-  // Timbrature di questo giorno
-  const ts = allTimbrature.filter((t) => t.data === data).sort((a, b) => a.orario.localeCompare(b.orario));
-
-  // Cerca entrata e uscita
-  const entrata = ts.find((t) => t.tipo === "Entrata");
-  let uscita = ts.find((t) => t.tipo === "Uscita");
-
-  // Se c'è un'entrata senza uscita nello stesso giorno, cerca la prima uscita
-  // nei giorni successivi (turno notturno o uscita forzata giorni dopo)
-  let uscitaSuccessiva: TimbraturaStorico | undefined;
-  if (entrata && !uscita) {
-    // Cerca in tutte le timbrature la prima uscita con data > entrata
-    const entrataTimestamp = new Date(`${entrata.data}T${entrata.orario}`).getTime();
-    uscitaSuccessiva = allTimbrature
-      .filter((t) => t.tipo === "Uscita" && t.data > data)
-      .sort((a, b) => a.data.localeCompare(b.data) || a.orario.localeCompare(b.orario))
-      .find((t) => new Date(`${t.data}T${t.orario}`).getTime() > entrataTimestamp);
-    if (uscitaSuccessiva) {
-      uscita = uscitaSuccessiva;
-    }
-  }
-
-  let oreTurno: number | null = null;
-  let turnoAperto = false;
-
-  if (entrata && uscita) {
-    if (uscitaSuccessiva) {
-      // Cross-day: usa timestamp completo
-      const eMs = new Date(`${entrata.data}T${entrata.orario}`).getTime();
-      const uMs = new Date(`${uscita.data}T${uscita.orario}`).getTime();
-      oreTurno = Math.round(((uMs - eMs) / 3600000) * 100) / 100;
+function parseTurni(timbrature: Timb[]): Turno[] {
+  const sorted = [...timbrature].sort((a, b) => a.timestamp - b.timestamp);
+  const turni: Turno[] = [];
+  let i = 0;
+  while (i < sorted.length) {
+    if (sorted[i].tipo === "Entrata") {
+      const entrata = sorted[i];
+      // Cerca la prossima uscita
+      let uscita: Timb | null = null;
+      if (i + 1 < sorted.length && sorted[i + 1].tipo === "Uscita") {
+        uscita = sorted[i + 1];
+        i += 2;
+      } else {
+        i += 1;
+      }
+      let ore: number | null = null;
+      if (uscita) {
+        ore = Math.round(((uscita.timestamp - entrata.timestamp) / 3600000) * 100) / 100;
+      }
+      turni.push({ entrata, uscita, ore });
     } else {
-      oreTurno = calcolaOreTurno(entrata.orario, uscita.orario);
+      // Uscita senza entrata — skip
+      i += 1;
     }
-  } else if (entrata && !uscita) {
-    turnoAperto = true;
   }
-
-  // Includi l'uscita successiva nella lista visiva
-  const timbratureVisive = uscitaSuccessiva ? [...ts, uscitaSuccessiva] : ts;
-
-  return { data, label: formatLabel(data), isOggi: data === oggi, timbrature: timbratureVisive, oreTurno, turnoAperto };
+  return turni.reverse(); // più recenti prima
 }
 
 /* ═══════════════════════════════════════════
@@ -161,9 +79,53 @@ function buildGiornoData(data: string, allTimbrature: TimbraturaStorico[], oggi:
 
 export default function StoricoPage() {
   const [tab, setTab] = useState<"settimana" | "mese">("settimana");
-  const [detailTimbr, setDetailTimbr] = useState<TimbraturaStorico | null>(null);
+  const [timbrature, setTimbrature] = useState<Timb[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [detailTimb, setDetailTimb] = useState<Timb | null>(null);
 
-  const oggi = isoDate(new Date());
+  // Week nav
+  const [weekOffset, setWeekOffset] = useState(0);
+  const monday = useMemo(() => { const m = getMonday(new Date()); m.setDate(m.getDate() + weekOffset * 7); return m; }, [weekOffset]);
+  const sunday = useMemo(() => { const s = new Date(monday); s.setDate(s.getDate() + 6); return s; }, [monday]);
+
+  // Month nav
+  const [monthOffset, setMonthOffset] = useState(0);
+  const meseDate = useMemo(() => new Date(new Date().getFullYear(), new Date().getMonth() + monthOffset, 1), [monthOffset]);
+  const meseFine = useMemo(() => new Date(meseDate.getFullYear(), meseDate.getMonth() + 1, 0), [meseDate]);
+
+  useEffect(() => {
+    setLoading(true);
+    const dataInizio = tab === "settimana" ? isoD(monday) : isoD(meseDate);
+    const dataFine = tab === "settimana" ? isoD(sunday) : isoD(meseFine);
+    fetch(`/api/timbrature?dataInizio=${dataInizio}&dataFine=${dataFine}`)
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTimbrature(data.map((t: Record<string, unknown>) => ({
+            id: t.id as number, tipo: t.tipo as "Entrata" | "Uscita",
+            data: new Date(t.orario as string).toLocaleDateString("sv-SE"),
+            orario: new Date(t.orario as string).toLocaleTimeString("it-IT", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+            sede: (t.sedeNome as string) || "Remoto",
+            lat: t.lat as number, lng: t.lng as number,
+            modificata: t.modificataManualmente as boolean,
+            noteModifica: t.noteModifica as string | undefined,
+            tipoAccesso: t.tipoAccesso as string | undefined,
+            motivoRemoto: t.motivoRemoto as string | undefined,
+            timestamp: new Date(t.orario as string).getTime(),
+          })));
+        }
+      }).catch(() => {}).finally(() => setLoading(false));
+  }, [tab, monday, sunday, meseDate, meseFine]);
+
+  const turni = useMemo(() => parseTurni(timbrature), [timbrature]);
+  const oggi = isoD(new Date());
+
+  // Riepilogo mese
+  const totOre = useMemo(() => turni.reduce((s, t) => s + (t.ore ?? 0), 0), [turni]);
+  const totTurni = turni.length;
+
+  const fmtPeriod = `${fmtDataCorta(isoD(monday))} — ${fmtDataCorta(isoD(sunday))}`;
+  const meseLabel = `${MESI[meseDate.getMonth()]} ${meseDate.getFullYear()}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -172,375 +134,149 @@ export default function StoricoPage() {
 
       {/* Tabs */}
       <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setTab("settimana")}
-          className={`rounded-xl py-3.5 text-base font-semibold min-h-[48px] transition-all active:scale-[0.97] ${
-            tab === "settimana"
-              ? "bg-accent text-white"
-              : "bg-card-bg border border-border text-text-muted"
-          }`}
-        >
-          Questa Settimana
-        </button>
-        <button
-          onClick={() => setTab("mese")}
-          className={`rounded-xl py-3.5 text-base font-semibold min-h-[48px] transition-all active:scale-[0.97] ${
-            tab === "mese"
-              ? "bg-accent text-white"
-              : "bg-card-bg border border-border text-text-muted"
-          }`}
-        >
-          Questo Mese
-        </button>
+        <button onClick={() => setTab("settimana")} className={`rounded-xl py-3.5 text-base font-semibold min-h-[48px] transition-all active:scale-[0.97] ${tab === "settimana" ? "bg-accent text-white" : "bg-card-bg border border-border text-text-muted"}`}>Questa Settimana</button>
+        <button onClick={() => setTab("mese")} className={`rounded-xl py-3.5 text-base font-semibold min-h-[48px] transition-all active:scale-[0.97] ${tab === "mese" ? "bg-accent text-white" : "bg-card-bg border border-border text-text-muted"}`}>Questo Mese</button>
       </div>
 
-      {tab === "settimana" && <TabSettimana oggi={oggi} onDetail={setDetailTimbr} />}
-      {tab === "mese" && <TabMese oggi={oggi} onDetail={setDetailTimbr} />}
-
-      {/* Bottom sheet dettaglio */}
-      {detailTimbr && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={() => setDetailTimbr(null)}>
-          <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border-t sm:border border-border bg-card-bg animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-              <div className="h-1 w-10 rounded-full bg-border" />
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <h2 className="text-lg font-bold text-foreground text-center">Dettaglio Timbratura</h2>
-
-              <div className="rounded-xl bg-sidebar-bg p-4 space-y-3">
-                <DetailRow label="Tipo" value={detailTimbr.tipo} valueColor={detailTimbr.tipo === "Entrata" ? "text-green-400" : "text-red-400"} />
-                <DetailRow label="Data" value={formatLabel(detailTimbr.data)} />
-                <DetailRow label="Orario" value={detailTimbr.orario} />
-                <DetailRow label="Sede" value={detailTimbr.sede} />
-                <DetailRow label="GPS" value={`${detailTimbr.lat.toFixed(6)}, ${detailTimbr.lng.toFixed(6)}`} small />
-              </div>
-
-              {detailTimbr.modificata && (
-                <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-400">MODIFICATA</span>
-                    <span className="text-sm font-medium text-amber-400">dall&apos;amministratore</span>
-                  </div>
-                  {detailTimbr.noteModifica && (
-                    <p className="text-sm text-text-muted leading-relaxed">{detailTimbr.noteModifica}</p>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setDetailTimbr(null)}
-                className="w-full rounded-xl border border-border py-4 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[56px]"
-              >
-                Chiudi
-              </button>
-            </div>
-          </div>
+      {/* Nav */}
+      {tab === "settimana" ? (
+        <div className="flex items-center justify-between rounded-xl bg-card-bg border border-border px-2 py-1">
+          <button onClick={() => setWeekOffset(v => v - 1)} className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all"><ChevronLeftIcon className="h-5 w-5" /></button>
+          <span className="text-sm font-semibold text-foreground">{fmtPeriod}</span>
+          <button onClick={() => setWeekOffset(v => v + 1)} disabled={weekOffset >= 0} className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all disabled:opacity-30"><ChevronRightIcon className="h-5 w-5" /></button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between rounded-xl bg-card-bg border border-border px-2 py-1">
+          <button onClick={() => setMonthOffset(v => v - 1)} className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all"><ChevronLeftIcon className="h-5 w-5" /></button>
+          <span className="text-sm font-semibold text-foreground">{meseLabel}</span>
+          <button onClick={() => setMonthOffset(v => v + 1)} disabled={monthOffset >= 0} className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all disabled:opacity-30"><ChevronRightIcon className="h-5 w-5" /></button>
         </div>
       )}
-    </div>
-  );
-}
 
-/* ═══════════════════════════════════════════
-   TAB SETTIMANA
-   ═══════════════════════════════════════════ */
-
-function TabSettimana({ oggi, onDetail }: { oggi: string; onDetail: (t: TimbraturaStorico) => void }) {
-  const [timbrature, setTimbrature] = useState<TimbraturaStorico[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const monday = useMemo(() => getMonday(parseDate(oggi)), [oggi]);
-  const sunday = useMemo(() => {
-    const d = new Date(monday);
-    d.setDate(d.getDate() + 6);
-    return d;
-  }, [monday]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        dataInizio: isoDate(monday),
-        dataFine: isoDate(sunday),
-      });
-      const res = await fetch(`/api/timbrature?${params.toString()}`);
-      if (!res.ok) throw new Error("Errore nel caricamento");
-      const data: ApiTimbratura[] = await res.json();
-      setTimbrature(data.map(transformApiTimbratura));
-    } catch {
-      setTimbrature([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [monday, sunday]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const giorni = useMemo(() => {
-    const result: GiornoData[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(d.getDate() + i);
-      result.push(buildGiornoData(isoDate(d), timbrature, oggi));
-    }
-    return result;
-  }, [monday, timbrature, oggi]);
-
-  if (loading) return <LoadingSpinner />;
-
-  const hasAny = giorni.some((g) => g.timbrature.length > 0);
-  if (!hasAny) return <StatoVuoto />;
-
-  return (
-    <div className="flex flex-col gap-3">
-      {giorni.map((g) => (
-        <GiornoCard key={g.data} giorno={g} onDetail={onDetail} />
-      ))}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   TAB MESE
-   ═══════════════════════════════════════════ */
-
-function TabMese({ oggi, onDetail }: { oggi: string; onDetail: (t: TimbraturaStorico) => void }) {
-  const oggiDate = parseDate(oggi);
-  const [monthOffset, setMonthOffset] = useState(0);
-  const [timbrature, setTimbrature] = useState<TimbraturaStorico[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const meseDate = new Date(oggiDate.getFullYear(), oggiDate.getMonth() + monthOffset, 1);
-  const meseLabel = `${MESI_NOME[meseDate.getMonth()]} ${meseDate.getFullYear()}`;
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const anno = meseDate.getFullYear();
-      const mese = meseDate.getMonth();
-      const dataInizio = isoDate(new Date(anno, mese, 1));
-      const dataFine = isoDate(new Date(anno, mese + 1, 0));
-      const params = new URLSearchParams({ dataInizio, dataFine });
-      const res = await fetch(`/api/timbrature?${params.toString()}`);
-      if (!res.ok) throw new Error("Errore nel caricamento");
-      const data: ApiTimbratura[] = await res.json();
-      setTimbrature(data.map(transformApiTimbratura));
-    } catch {
-      setTimbrature([]);
-    } finally {
-      setLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monthOffset]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const { settimane, totOre, giorniLav, mediaOre } = useMemo(() => {
-    const anno = meseDate.getFullYear();
-    const mese = meseDate.getMonth();
-    const daysInMonth = new Date(anno, mese + 1, 0).getDate();
-
-    // Raggruppa per settimana
-    const weeks: Map<number, GiornoData[]> = new Map();
-    let totOre = 0;
-    let giorniLav = 0;
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dt = new Date(anno, mese, d);
-      const iso = isoDate(dt);
-      const giorno = buildGiornoData(iso, timbrature, oggi);
-
-      if (giorno.timbrature.length === 0) continue;
-
-      // Numero settimana nel mese (1-based)
-      const weekNum = Math.ceil((d + ((new Date(anno, mese, 1).getDay() + 6) % 7)) / 7);
-
-      if (!weeks.has(weekNum)) weeks.set(weekNum, []);
-      weeks.get(weekNum)!.push(giorno);
-
-      if (giorno.oreTurno) totOre += giorno.oreTurno;
-      giorniLav++;
-    }
-
-    const mediaOre = giorniLav > 0 ? Math.round((totOre / giorniLav) * 10) / 10 : 0;
-    return { settimane: [...weeks.entries()].sort((a, b) => a[0] - b[0]), totOre: Math.round(totOre * 10) / 10, giorniLav, mediaOre };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timbrature, oggi, monthOffset]);
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Selettore mese */}
-      <div className="flex items-center justify-between rounded-xl bg-card-bg border border-border px-2 py-1">
-        <button
-          onClick={() => setMonthOffset((v) => v - 1)}
-          className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all"
-        >
-          <ChevronLeftIcon className="h-5 w-5" />
-        </button>
-        <span className="text-base font-semibold text-foreground">{meseLabel}</span>
-        <button
-          onClick={() => setMonthOffset((v) => v + 1)}
-          disabled={monthOffset >= 0}
-          className="flex items-center justify-center w-12 h-12 rounded-lg text-text-muted active:bg-white/5 active:scale-[0.95] transition-all disabled:opacity-30"
-        >
-          <ChevronRightIcon className="h-5 w-5" />
-        </button>
-      </div>
-
+      {/* Content */}
       {loading ? (
-        <LoadingSpinner />
-      ) : settimane.length === 0 ? (
-        <StatoVuoto />
+        <div className="flex items-center justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>
+      ) : turni.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="text-5xl mb-4">📭</div>
+          <p className="text-lg font-semibold text-foreground">Nessuna timbratura</p>
+          <p className="mt-1 text-sm text-text-muted">Non ci sono timbrature in questo periodo.</p>
+        </div>
       ) : (
         <>
-          {settimane.map(([weekNum, giorni]) => (
-            <div key={weekNum}>
-              <p className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2 px-1">Settimana {weekNum}</p>
-              <div className="flex flex-col gap-3">
-                {giorni.map((g) => (
-                  <GiornoCard key={g.data} giorno={g} onDetail={onDetail} />
-                ))}
-              </div>
-            </div>
-          ))}
+          <div className="flex flex-col gap-3">
+            {turni.map((turno, i) => {
+              const isOggi = turno.entrata.data === oggi;
+              const isRemotoEnt = turno.entrata.tipoAccesso === "remoto";
+              const isRemotoUsc = turno.uscita?.tipoAccesso === "remoto";
+              const crossDay = turno.uscita && turno.entrata.data !== turno.uscita.data;
 
-          {/* Riepilogo */}
-          <div className="rounded-2xl border border-border bg-card-bg p-5">
-            <p className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">Riepilogo {meseLabel}</p>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-accent tabular-nums">{totOre}h</p>
-                <p className="text-xs text-text-muted mt-0.5">Ore totali</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-foreground tabular-nums">{giorniLav}</p>
-                <p className="text-xs text-text-muted mt-0.5">Giorni lavorati</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-amber-400 tabular-nums">{mediaOre}h</p>
-                <p className="text-xs text-text-muted mt-0.5">Media/giorno</p>
+              return (
+                <div key={turno.entrata.id} className={`rounded-2xl border p-4 ${isOggi ? "border-accent/40 bg-accent/[0.04]" : "border-border bg-card-bg"}`}>
+                  {/* Header con ore */}
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-text-muted">{fmtData(turno.entrata.data)}</p>
+                    {turno.ore != null ? (
+                      <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-bold text-green-400 tabular-nums">{turno.ore.toFixed(1)}h</span>
+                    ) : (
+                      <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-400">In corso</span>
+                    )}
+                  </div>
+
+                  {/* Entrata */}
+                  <button onClick={() => setDetailTimb(turno.entrata)} className="w-full flex items-center gap-3 rounded-xl bg-sidebar-bg px-3.5 py-3 min-h-[48px] active:bg-white/5 active:scale-[0.98] transition-all text-left mb-1.5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-500/15">
+                      <ArrowDownIcon className="h-4 w-4 text-green-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-foreground tabular-nums">{turno.entrata.orario}</p>
+                        <span className="text-xs text-text-muted">{fmtDataCorta(turno.entrata.data)}</span>
+                        {isRemotoEnt && <span className="rounded bg-zinc-500/20 px-1.5 py-0.5 text-[9px] font-bold text-zinc-400">REMOTO</span>}
+                        {turno.entrata.modificata && <span className="rounded bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-400">MOD</span>}
+                      </div>
+                      <p className="text-xs text-text-muted truncate">{isRemotoEnt ? "Posizione remota" : turno.entrata.sede}</p>
+                    </div>
+                    <ChevronRightIcon className="h-4 w-4 text-text-muted shrink-0" />
+                  </button>
+
+                  {/* Uscita */}
+                  {turno.uscita ? (
+                    <button onClick={() => setDetailTimb(turno.uscita!)} className="w-full flex items-center gap-3 rounded-xl bg-sidebar-bg px-3.5 py-3 min-h-[48px] active:bg-white/5 active:scale-[0.98] transition-all text-left">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/15">
+                        <ArrowUpIcon className="h-4 w-4 text-red-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-base font-semibold text-foreground tabular-nums">{turno.uscita.orario}</p>
+                          {crossDay && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-accent">{fmtDataCorta(turno.uscita.data)}</span>}
+                          {!crossDay && <span className="text-xs text-text-muted">{fmtDataCorta(turno.uscita.data)}</span>}
+                          {isRemotoUsc && <span className="rounded bg-zinc-500/20 px-1.5 py-0.5 text-[9px] font-bold text-zinc-400">REMOTO</span>}
+                        </div>
+                        <p className="text-xs text-text-muted truncate">{isRemotoUsc ? "Posizione remota" : turno.uscita.sede}</p>
+                      </div>
+                      <ChevronRightIcon className="h-4 w-4 text-text-muted shrink-0" />
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-xl bg-sidebar-bg/50 border border-dashed border-amber-500/30 px-3.5 py-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/15">
+                        <ArrowUpIcon className="h-4 w-4 text-amber-400" />
+                      </div>
+                      <p className="text-sm text-amber-400">Uscita non registrata</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Riepilogo mese */}
+          {tab === "mese" && (
+            <div className="rounded-2xl border border-border bg-card-bg p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-text-muted mb-3">Riepilogo {meseLabel}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-accent tabular-nums">{Math.round(totOre * 10) / 10}h</p>
+                  <p className="text-xs text-text-muted mt-0.5">Ore totali</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground tabular-nums">{totTurni}</p>
+                  <p className="text-xs text-text-muted mt-0.5">Turni</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </>
       )}
-    </div>
-  );
-}
 
-/* ═══════════════════════════════════════════
-   GIORNO CARD
-   ═══════════════════════════════════════════ */
-
-function GiornoCard({ giorno, onDetail }: { giorno: GiornoData; onDetail: (t: TimbraturaStorico) => void }) {
-  const { label, isOggi, timbrature, oreTurno, turnoAperto } = giorno;
-  const empty = timbrature.length === 0;
-
-  return (
-    <div
-      className={`rounded-2xl border p-4 transition-colors ${
-        isOggi
-          ? "border-accent/40 bg-accent/[0.04]"
-          : "border-border bg-card-bg"
-      }`}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <p className="text-base font-semibold text-foreground">{label}</p>
-          {isOggi && (
-            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent uppercase">Oggi</span>
-          )}
-        </div>
-        {oreTurno !== null && (
-          <span className="rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-bold text-green-400 tabular-nums">
-            {oreTurno.toFixed(1)}h
-          </span>
-        )}
-        {turnoAperto && (
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-400">
-            In corso
-          </span>
-        )}
-      </div>
-
-      {empty ? (
-        <p className="text-sm text-text-muted py-1">Giorno libero</p>
-      ) : (
-        <div className="space-y-1.5">
-          {timbrature.map((t) => {
-            const isRemoto = t.tipoAccesso === "remoto";
-            return (
-              <div key={t.id}>
-                <button
-                  onClick={() => onDetail(t)}
-                  className="flex w-full items-center gap-3 rounded-xl bg-sidebar-bg px-3.5 py-3 min-h-[48px] active:bg-white/5 active:scale-[0.98] transition-all text-left"
-                >
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                    t.tipo === "Entrata" ? "bg-green-500/15" : "bg-red-500/15"
-                  }`}>
-                    {t.tipo === "Entrata" ? (
-                      <ArrowDownIcon className="h-4 w-4 text-green-400" />
-                    ) : (
-                      <ArrowUpIcon className="h-4 w-4 text-red-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-base font-semibold text-foreground tabular-nums">{t.orario}</p>
-                      {t.data !== giorno.data && (
-                        <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-accent">{t.data.slice(8)}/{t.data.slice(5,7)}</span>
-                      )}
-                      {isRemoto && (
-                        <span className="rounded bg-zinc-500/20 px-1.5 py-0.5 text-[9px] font-bold text-zinc-400 uppercase">Remoto</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-text-muted truncate">{isRemoto ? "Posizione remota" : t.sede}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {t.modificata && (
-                      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">MOD</span>
-                    )}
-                    <ChevronRightIcon className="h-4 w-4 text-text-muted" />
-                  </div>
-                </button>
-                {isRemoto && t.motivoRemoto && (
-                  <p className="mt-0.5 px-3.5 text-xs italic text-text-muted">{t.motivoRemoto}</p>
-                )}
+      {/* ═══ BOTTOM SHEET DETTAGLIO ═══ */}
+      {detailTimb && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={() => setDetailTimb(null)}>
+          <div className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border-t sm:border border-border bg-card-bg animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-center pt-3 pb-1 sm:hidden"><div className="h-1 w-10 rounded-full bg-border" /></div>
+            <div className="px-6 py-5 space-y-4">
+              <h2 className="text-lg font-bold text-foreground text-center">Dettaglio Timbratura</h2>
+              <div className="rounded-xl bg-sidebar-bg p-4 space-y-3">
+                <DetailRow label="Tipo" value={detailTimb.tipo} valueColor={detailTimb.tipo === "Entrata" ? "text-green-400" : "text-red-400"} />
+                <DetailRow label="Data" value={fmtData(detailTimb.data)} />
+                <DetailRow label="Orario" value={detailTimb.orario} />
+                <DetailRow label="Sede" value={detailTimb.tipoAccesso === "remoto" ? "Posizione remota" : detailTimb.sede} />
+                <DetailRow label="GPS" value={`${detailTimb.lat.toFixed(6)}, ${detailTimb.lng.toFixed(6)}`} small />
               </div>
-            );
-          })}
+              {detailTimb.modificata && (
+                <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4">
+                  <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-400">MODIFICATA</span>
+                  {detailTimb.noteModifica && <p className="text-sm text-text-muted mt-2">{detailTimb.noteModifica}</p>}
+                </div>
+              )}
+              {detailTimb.motivoRemoto && (
+                <p className="text-xs text-text-muted italic">{detailTimb.motivoRemoto}</p>
+              )}
+              <button onClick={() => setDetailTimb(null)} className="w-full rounded-xl border border-border py-4 text-base font-semibold text-text-muted active:bg-white/5 active:scale-[0.97] transition-all min-h-[56px]">Chiudi</button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   LOADING SPINNER
-   ═══════════════════════════════════════════ */
-
-function LoadingSpinner() {
-  return (
-    <div className="flex items-center justify-center py-16">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-accent" />
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   STATO VUOTO
-   ═══════════════════════════════════════════ */
-
-function StatoVuoto() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="text-5xl mb-4">📭</div>
-      <p className="text-lg font-semibold text-foreground">Nessuna timbratura</p>
-      <p className="mt-1 text-sm text-text-muted">Non ci sono timbrature in questo periodo.</p>
     </div>
   );
 }
@@ -550,46 +286,18 @@ function StatoVuoto() {
    ═══════════════════════════════════════════ */
 
 function DetailRow({ label, value, valueColor, small }: { label: string; value: string; valueColor?: string; small?: boolean }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-text-muted">{label}</span>
-      <span className={`${small ? "text-xs font-mono" : "text-sm font-semibold"} ${valueColor ?? "text-foreground"}`}>{value}</span>
-    </div>
-  );
+  return (<div className="flex items-center justify-between"><span className="text-sm text-text-muted">{label}</span><span className={`${small ? "text-xs font-mono" : "text-sm font-semibold"} ${valueColor ?? "text-foreground"}`}>{value}</span></div>);
 }
-
-/* ═══════════════════════════════════════════
-   ICONS
-   ═══════════════════════════════════════════ */
 
 function ArrowDownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
-    </svg>
-  );
+  return (<svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" /></svg>);
 }
-
 function ArrowUpIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" />
-    </svg>
-  );
+  return (<svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" /></svg>);
 }
-
 function ChevronLeftIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-    </svg>
-  );
+  return (<svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>);
 }
-
 function ChevronRightIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-    </svg>
-  );
+  return (<svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>);
 }
