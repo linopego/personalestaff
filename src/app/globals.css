@@ -62,6 +62,15 @@ body {
   background-color: rgba(0, 0, 0, 0.02);
 }
 
+/* Staff container: fill entire screen */
+.staff-container {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+html {
+  height: -webkit-fill-available;
+}
+
 /* PWA bottom area handled by nav padding */
 
 /* Scrollbar styling */
