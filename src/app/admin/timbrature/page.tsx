@@ -323,18 +323,19 @@ export default function TimbraturePage() {
           body: JSON.stringify(uscData),
         });
       } else if (!editTurno.uscita && editOraUsc) {
-        // Turno incompleto: crea nuova uscita
+        // Turno incompleto: crea nuova uscita tramite API admin (no cooldown, no geofence)
         const sedeId = editSedeId !== "" ? editSedeId : editTurno.entrata.sedeId;
-        await fetch("/api/timbrature", {
+        await fetch("/api/admin/timbrature", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            userId: editTurno.entrata.userId,
             sedeId: sedeId || null,
             tipo: "Uscita",
+            orario: `${editTurno.entrata.data}T${editOraUsc}:00${tz}`,
             lat: editTurno.entrata.lat,
             lng: editTurno.entrata.lng,
-            tipoAccesso: "sede",
-            motivoRemoto: `Uscita aggiunta manualmente dall'admin: ${editNote.trim()}`,
+            noteModifica: editNote.trim(),
           }),
         });
       }
