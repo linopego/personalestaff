@@ -349,13 +349,13 @@ export default function TimbraturePage() {
           <h1 className="text-2xl font-bold text-foreground">Gestione Timbrature</h1>
           <p className="mt-1 text-sm text-text-muted">{riepilogo.totTurni} turni nel periodo selezionato</p>
         </div>
-        <button
-          onClick={() => downloadCSV(turniVisualizzati)}
+        <a
+          href={`/api/export?tipo=timbrature&dataInizio=${dataInizio}&dataFine=${dataFine}`}
           className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
         >
           <DownloadIcon className="h-4 w-4" />
-          Esporta CSV
-        </button>
+          Esporta Excel
+        </a>
       </div>
 
       {/* ── Filtri ── */}
