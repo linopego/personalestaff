@@ -137,10 +137,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Genera response
+  // Genera response con BOM UTF-8 per compatibilità Excel Windows
+  const bom = "﻿";
   const headers = new Headers();
   headers.set("Content-Type", "text/csv; charset=utf-8");
   headers.set("Content-Disposition", `attachment; filename="report_${dataInizio}_${dataFine}.csv"`);
 
-  return new NextResponse(csv, { headers });
+  return new NextResponse(bom + csv, { headers });
 }
