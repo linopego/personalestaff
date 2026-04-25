@@ -41,7 +41,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   if (!user || user.ruolo === "admin") return null;
 
   return (
-    <div className="flex h-full flex-col bg-background">
+    <div className="flex flex-col bg-background" style={{ minHeight: "100dvh" }}>
       {/* ── Header ── */}
       <header className="flex items-center justify-between border-b border-border bg-sidebar-bg px-4 sm:px-6" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))", paddingBottom: "0.75rem" }}>
         <div className="flex items-center gap-3">
