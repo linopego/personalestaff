@@ -310,7 +310,7 @@ export default function TimbraturePage() {
         return;
       }
 
-      // Update uscita if present, or skip adding (API does not support creating new records via PUT)
+      // Update uscita se esiste, o crea nuova uscita se turno incompleto
       if (editTurno.uscita && editOraUsc) {
         const uscData = {
           noteModifica: editNote.trim(),
@@ -321,6 +321,21 @@ export default function TimbraturePage() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(uscData),
+        });
+      } else if (!editTurno.uscita && editOraUsc) {
+        // Turno incompleto: crea nuova uscita
+        const sedeId = editSedeId !== "" ? editSedeId : editTurno.entrata.sedeId;
+        await fetch("/api/timbrature", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sedeId: sedeId || null,
+            tipo: "Uscita",
+            lat: editTurno.entrata.lat,
+            lng: editTurno.entrata.lng,
+            tipoAccesso: "sede",
+            motivoRemoto: `Uscita aggiunta manualmente dall'admin: ${editNote.trim()}`,
+          }),
         });
       }
 
