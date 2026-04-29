@@ -56,21 +56,7 @@ export default function DipDocumentiPage() {
   }
 
   async function viewDoc(id: number) {
-    const res = await fetch("/api/documenti/" + id);
-    if (!res.ok) { alert("Errore"); return; }
-    const data = await res.json();
-    const base64 = data.contenuto;
-    if (base64.startsWith("data:")) {
-      const [meta, b64data] = base64.split(",");
-      const mime = meta.match(/:(.*?);/)?.[1] || "application/pdf";
-      const byteChars = atob(b64data);
-      const byteArray = new Uint8Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
-      const blob = new Blob([byteArray], { type: mime });
-      window.open(URL.createObjectURL(blob), "_blank");
-    } else {
-      window.open(base64, "_blank");
-    }
+    window.open("/api/documenti/" + id + "?download=1", "_blank");
   }
 
   async function deleteDoc(id: number) {

@@ -4,8 +4,8 @@ import { documentiDipendente } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getSession, unauthorized, forbidden } from "@/lib/api-auth";
 
-// GET: scarica il documento (contenuto base64)
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// GET: scarica il documento
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getSession();
   if (!user) return unauthorized();
 
@@ -22,6 +22,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // Segna come letto se è il dipendente che lo apre
   if (user.ruolo !== "admin" && !doc.lettoDaDipendente) {
     await db.update(documentiDipendente).set({ lettoDaDipendente: true }).where(eq(documentiDipendente.id, parseInt(id)));
+  }
+
+  const { searchParams } = new URL(req.url);
+  const download = searchParams.get("download");
+
+  if (download) {
+    // Restituisci il file come binary response
+    const base64 = doc.contenuto;
+    if (base64.startsWith("data:")) {
+      const [meta, b64data] = base64.split(",");
+      const mime = meta.match(/:(.*?);/)?.[1] || "application/pdf";
+      const buffer = Buffer.from(b64data, "base64");
+      const headers = new Headers();
+      headers.set("Content-Type", mime);
+      headers.set("Content-Disposition", `inline; filename="${doc.nomeFile}"`);
+      return new NextResponse(buffer, { headers });
+    }
   }
 
   return NextResponse.json({ contenuto: doc.contenuto, nomeFile: doc.nomeFile });
