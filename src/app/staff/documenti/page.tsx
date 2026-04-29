@@ -23,11 +23,21 @@ export default function DocumentiPage() {
     // Segna come letto localmente
     setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, lettoDaDipendente: true } : d));
 
-    // Scarica il file
-    const link = document.createElement("a");
-    link.href = data.contenuto;
-    link.download = data.nomeFile;
-    link.click();
+    // Converti base64 in Blob e apri
+    const base64 = data.contenuto;
+    if (base64.startsWith("data:")) {
+      const [meta, b64data] = base64.split(",");
+      const mime = meta.match(/:(.*?);/)?.[1] || "application/pdf";
+      const byteChars = atob(b64data);
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArray], { type: mime });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    } else {
+      // Fallback: apri come data URL
+      window.open(base64, "_blank");
+    }
   }
 
   const nonLetti = docs.filter(d => !d.lettoDaDipendente).length;
