@@ -55,6 +55,24 @@ export default function DipDocumentiPage() {
     reader.readAsDataURL(file);
   }
 
+  async function viewDoc(id: number) {
+    const res = await fetch("/api/documenti/" + id);
+    if (!res.ok) { alert("Errore"); return; }
+    const data = await res.json();
+    const base64 = data.contenuto;
+    if (base64.startsWith("data:")) {
+      const [meta, b64data] = base64.split(",");
+      const mime = meta.match(/:(.*?);/)?.[1] || "application/pdf";
+      const byteChars = atob(b64data);
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([byteArray], { type: mime });
+      window.open(URL.createObjectURL(blob), "_blank");
+    } else {
+      window.open(base64, "_blank");
+    }
+  }
+
   async function deleteDoc(id: number) {
     if (!confirm("Eliminare questo documento?")) return;
     await fetch("/api/documenti/" + id, { method: "DELETE" });
@@ -95,7 +113,10 @@ export default function DipDocumentiPage() {
                   <td className="px-4 py-3 text-sm text-text-muted">{new Date(doc.createdAt).toLocaleDateString("it-IT")}</td>
                   <td className="px-4 py-3">{doc.lettoDaDipendente ? <span className="text-green-400 text-xs">✓ Letto</span> : <span className="text-amber-400 text-xs">Non letto</span>}</td>
                   <td className="px-4 py-3 text-center">
-                    <button onClick={() => deleteDoc(doc.id)} className="text-xs text-red-400 hover:text-red-300">Elimina</button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => viewDoc(doc.id)} className="text-xs text-accent hover:text-accent-hover">Apri</button>
+                      <button onClick={() => deleteDoc(doc.id)} className="text-xs text-red-400 hover:text-red-300">Elimina</button>
+                    </div>
                   </td>
                 </tr>
               ))}
