@@ -64,6 +64,13 @@
       "when": 1775631909723,
       "tag": "0008_little_lizard",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777476967660,
+      "tag": "0009_slow_taskmaster",
+      "breakpoints": true
     }
   ]
 }
