@@ -70,6 +70,20 @@ export default function ProfiloPage() {
           </div>
         </Section>
 
+        {/* Area Personale */}
+        <a href="/staff/documenti" className="flex items-center justify-between rounded-2xl border border-border bg-card-bg px-4 py-4 min-h-[56px] active:bg-white/[0.02] active:scale-[0.99] transition-all">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+              <svg className="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Area Personale</p>
+              <p className="text-xs text-text-muted">Documenti, contratto, buste paga</p>
+            </div>
+          </div>
+          <svg className="h-5 w-5 text-text-muted" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+        </a>
+
         <Section title="Impostazioni">
           <div className="flex items-center justify-between px-4 py-3.5 min-h-[48px] border-b border-border">
             <span className="text-sm text-foreground">{theme === "dark" ? "Tema scuro" : "Tema chiaro"}</span>

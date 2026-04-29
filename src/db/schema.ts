@@ -195,3 +195,15 @@ export const notifiche = pgTable("notifiche", {
   letto: boolean("letto").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/* ── Documenti Dipendente ── */
+export const documentiDipendente = pgTable("documenti_dipendente", {
+  id: serial("id").primaryKey(),
+  dipendenteId: integer("dipendente_id").notNull().references(() => utenti.id),
+  nomeFile: varchar("nome_file", { length: 255 }).notNull(),
+  tipoDocumento: varchar("tipo_documento", { length: 30 }).notNull(),
+  contenuto: text("contenuto").notNull(),
+  caricatoDa: integer("caricato_da").notNull().references(() => utenti.id),
+  lettoDaDipendente: boolean("letto_da_dipendente").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
