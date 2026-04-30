@@ -15,16 +15,17 @@ export default function DocumentiPage() {
     fetch("/api/documenti").then(r => r.json()).then(d => { if (Array.isArray(d)) setDocs(d); }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const [viewingPdf, setViewingPdf] = useState<string | null>(null);
+
   async function scaricaDoc(doc: Doc) {
     const res = await fetch("/api/documenti/" + doc.id);
     if (!res.ok) { alert("Errore nel download"); return; }
     const data = await res.json();
 
-    // Segna come letto localmente
     setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, lettoDaDipendente: true } : d));
 
-    // Apri direttamente dalla API (redirect al contenuto)
-    window.location.href = "/api/documenti/" + doc.id + "?download=1";
+    // Mostra il PDF inline
+    setViewingPdf(data.contenuto);
   }
 
   const nonLetti = docs.filter(d => !d.lettoDaDipendente).length;
@@ -65,6 +66,17 @@ export default function DocumentiPage() {
               <svg className="h-4 w-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* PDF Viewer fullscreen */}
+      {viewingPdf && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="flex items-center justify-between bg-sidebar-bg px-4 py-3" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+            <p className="text-sm font-semibold text-foreground">Documento</p>
+            <button onClick={() => setViewingPdf(null)} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white active:scale-[0.97]">Chiudi</button>
+          </div>
+          <iframe src={viewingPdf} className="flex-1 w-full border-0" title="PDF" />
         </div>
       )}
     </div>
