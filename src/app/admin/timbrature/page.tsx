@@ -191,6 +191,12 @@ export default function TimbraturePage() {
   const [deleteTurno, setDeleteTurno] = useState<TurnoCalcolato | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Aggiungi manuale
+  const [showAddManual, setShowAddManual] = useState(false);
+  const [manualForm, setManualForm] = useState({ dipId: "", sedeId: "", data: "", oraEnt: "", oraUsc: "", note: "" });
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualError, setManualError] = useState("");
+
   // Modale correzione
   const [editTurno, setEditTurno] = useState<TurnoCalcolato | null>(null);
   const [editOraEnt, setEditOraEnt] = useState("");
@@ -257,6 +263,66 @@ export default function TimbraturePage() {
     setEditNote("");
     setEditError("");
   }, []);
+
+  function calcOreManual() {
+    if (!manualForm.oraEnt || !manualForm.oraUsc) return "";
+    const [eh, em] = manualForm.oraEnt.split(":").map(Number);
+    const [uh, um] = manualForm.oraUsc.split(":").map(Number);
+    let diff = (uh * 60 + um) - (eh * 60 + em);
+    if (diff < 0) diff += 24 * 60;
+    return (diff / 60).toFixed(1) + "h";
+  }
+
+  async function saveManual() {
+    setManualError("");
+    if (!manualForm.dipId || !manualForm.sedeId || !manualForm.data || !manualForm.oraEnt || !manualForm.oraUsc) {
+      setManualError("Compila tutti i campi obbligatori"); return;
+    }
+    if (manualForm.oraUsc <= manualForm.oraEnt) {
+      // Potrebbe essere un turno notturno — avviso ma permetti
+    }
+
+    const tzOffset = new Date().getTimezoneOffset();
+    const tzSign = tzOffset <= 0 ? "+" : "-";
+    const tzH = String(Math.abs(Math.floor(tzOffset / 60))).padStart(2, "0");
+    const tzM = String(Math.abs(tzOffset % 60)).padStart(2, "0");
+    const tz = `${tzSign}${tzH}:${tzM}`;
+
+    setManualSaving(true);
+    try {
+      // Crea entrata
+      const entRes = await fetch("/api/admin/timbrature", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: parseInt(manualForm.dipId), sedeId: parseInt(manualForm.sedeId),
+          tipo: "Entrata", orario: `${manualForm.data}T${manualForm.oraEnt}:00${tz}`,
+          noteModifica: manualForm.note || "Inserimento manuale",
+        }),
+      });
+      if (!entRes.ok) { const e = await entRes.json().catch(() => ({})); setManualError(e.error || "Errore entrata"); setManualSaving(false); return; }
+
+      // Crea uscita
+      const uscRes = await fetch("/api/admin/timbrature", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: parseInt(manualForm.dipId), sedeId: parseInt(manualForm.sedeId),
+          tipo: "Uscita", orario: `${manualForm.data}T${manualForm.oraUsc}:00${tz}`,
+          noteModifica: manualForm.note || "Inserimento manuale",
+        }),
+      });
+      if (!uscRes.ok) { const e = await uscRes.json().catch(() => ({})); setManualError(e.error || "Errore uscita"); setManualSaving(false); return; }
+
+      setShowAddManual(false);
+      setManualForm({ dipId: "", sedeId: "", data: "", oraEnt: "", oraUsc: "", note: "" });
+      // Refresh
+      const params = new URLSearchParams();
+      if (dataInizio) params.set("dataInizio", dataInizio);
+      if (dataFine) params.set("dataFine", dataFine);
+      const fresh = await fetch(`/api/timbrature?${params.toString()}`).then(r => r.json());
+      setTimbrature((fresh as ApiTimbratura[]).map(fromApi));
+    } catch { setManualError("Errore di connessione"); }
+    setManualSaving(false);
+  }
 
   async function handleDelete() {
     if (!deleteTurno) return;
@@ -365,13 +431,14 @@ export default function TimbraturePage() {
           <h1 className="text-2xl font-bold text-foreground">Gestione Timbrature</h1>
           <p className="mt-1 text-sm text-text-muted">{riepilogo.totTurni} turni nel periodo selezionato</p>
         </div>
-        <a
-          href={`/api/export?tipo=timbrature&dataInizio=${dataInizio}&dataFine=${dataFine}`}
-          className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
-        >
-          <DownloadIcon className="h-4 w-4" />
-          Esporta Excel
-        </a>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowAddManual(true)} className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 transition-colors">
+            + Aggiungi Timbratura
+          </button>
+          <a href={`/api/export?tipo=timbrature&dataInizio=${dataInizio}&dataFine=${dataFine}`} className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover transition-colors">
+            <DownloadIcon className="h-4 w-4" /> Esporta Excel
+          </a>
+        </div>
       </div>
 
       {/* ── Filtri ── */}
@@ -478,7 +545,7 @@ export default function TimbraturePage() {
                         <div className="flex items-center justify-center gap-1">
                           {mod && (
                             <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400" title={turno.entrata.noteCorrezione || turno.uscita?.noteCorrezione}>
-                              MOD
+                              Manuale
                             </span>
                           )}
                           <button
@@ -527,6 +594,65 @@ export default function TimbraturePage() {
       </div>
 
       {/* ═══ MODALE ELIMINAZIONE ═══ */}
+      {/* ═══ MODALE AGGIUNGI MANUALE ═══ */}
+      {showAddManual && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowAddManual(false)}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card-bg shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <h2 className="text-lg font-semibold text-foreground">Aggiungi Timbratura</h2>
+              <button onClick={() => setShowAddManual(false)} className="text-text-muted hover:text-foreground text-xl">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              {manualError && <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-400">{manualError}</div>}
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Dipendente *</label>
+                <select value={manualForm.dipId} onChange={e => setManualForm({...manualForm, dipId: e.target.value})} className={selectCls + " w-full"}>
+                  <option value="">Seleziona dipendente</option>
+                  {dipendenti.map(d => <option key={d.id} value={d.id}>{d.nome} {d.cognome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Sede *</label>
+                <select value={manualForm.sedeId} onChange={e => setManualForm({...manualForm, sedeId: e.target.value})} className={selectCls + " w-full"}>
+                  <option value="">Seleziona sede</option>
+                  {sedi.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Data *</label>
+                <input type="date" value={manualForm.data} onChange={e => setManualForm({...manualForm, data: e.target.value})} className={inputCls} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-text-muted mb-1 block">Ora entrata *</label>
+                  <input type="time" value={manualForm.oraEnt} onChange={e => setManualForm({...manualForm, oraEnt: e.target.value})} className={inputCls} />
+                </div>
+                <div>
+                  <label className="text-xs text-text-muted mb-1 block">Ora uscita *</label>
+                  <input type="time" value={manualForm.oraUsc} onChange={e => setManualForm({...manualForm, oraUsc: e.target.value})} className={inputCls} />
+                </div>
+              </div>
+              {calcOreManual() && (
+                <div className="rounded-lg bg-accent/10 border border-accent/20 px-3 py-2 text-center">
+                  <span className="text-sm font-bold text-accent">{calcOreManual()}</span>
+                  <span className="text-xs text-text-muted ml-1">ore calcolate</span>
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-text-muted mb-1 block">Note (opzionale)</label>
+                <input value={manualForm.note} onChange={e => setManualForm({...manualForm, note: e.target.value})} placeholder="es. Dimenticato di timbrare" className={inputCls} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-border px-6 py-4">
+              <button onClick={() => setShowAddManual(false)} className="rounded-lg border border-border px-4 py-2 text-sm text-text-muted">Annulla</button>
+              <button onClick={saveManual} disabled={manualSaving} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50">
+                {manualSaving ? "Salvataggio..." : "Salva timbratura"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {deleteTurno && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setDeleteTurno(null)}>
           <div className="w-full max-w-md rounded-xl border border-border bg-card-bg shadow-2xl border-t-4 border-t-red-500" onClick={(e) => e.stopPropagation()}>
