@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { eventi, eventiAssegnazioni, utenti, sedi } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { getSession, unauthorized } from "@/lib/api-auth";
 
 // Accessibile a tutti gli autenticati — mostra personale senza info sensibili
@@ -28,7 +28,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orarioFine: eventiAssegnazioni.orarioFine,
   }).from(eventiAssegnazioni)
     .innerJoin(utenti, eq(eventiAssegnazioni.userId, utenti.id))
-    .where(eq(eventiAssegnazioni.eventoId, parseInt(id)));
+    .where(and(eq(eventiAssegnazioni.eventoId, parseInt(id)), ne(eventiAssegnazioni.statoConferma, "rifiutato")));
 
   return NextResponse.json({
     ...evento,
