@@ -7,7 +7,7 @@ const MESI = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","
 const GIORNI = ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
 const MANSIONE_COLORS: Record<string, string> = { sala: "bg-blue-500/15 text-blue-400", bar: "bg-amber-500/15 text-amber-400", cassa: "bg-green-500/15 text-green-400", guardaroba: "bg-purple-500/15 text-purple-400", responsabile: "bg-red-500/15 text-red-400", "responsabile casse": "bg-emerald-500/15 text-emerald-400" };
 const MANSIONI = ["sala", "bar", "cassa", "guardaroba", "responsabile", "responsabile casse"];
-const POSTAZIONI = ["Bar 1", "Bar 2", "Bar 3", "Bar 4", "Cassa Bar 1", "Cassa Bar 2", "Cassa Bar 3", "Cassa Bar 4", "Cassa Ingresso", "Cassa Cambusa", "Pass Comande"];
+const POSTAZIONI_DEFAULT = ["Bar 1", "Bar 2", "Bar 3", "Bar 4", "Cassa Bar 1", "Cassa Bar 2", "Cassa Bar 3", "Cassa Bar 4", "Cassa Ingresso", "Cassa Cambusa", "Pass Comande"];
 
 interface Assegnazione { id: number; userId: number; orarioInizio: string|null; orarioFine: string|null; mansione: string|null; postazione: string|null; note: string|null; statoConferma: string; motivoRifiuto: string|null; dipNome: string; dipCognome: string; tipoContratto: string; }
 interface Evento { id: number; nome: string; data: string; oraInizio: string|null; oraFine: string|null; sede: string; assegnazioni: Assegnazione[]; }
@@ -32,6 +32,31 @@ export default function EventoDetailPage() {
   const [search, setSearch] = useState("");
   const [addForm, setAddForm] = useState<Record<number, { orarioInizio: string; orarioFine: string; mansione: string; postazione: string; postazioneAltro: string; note: string; chiusura: boolean }>>({});
   const [expandedDip, setExpandedDip] = useState<number|null>(null);
+  const [postazioniCustom, setPostazioniCustom] = useState<string[]>([]);
+  const [showNewPostazione, setShowNewPostazione] = useState(false);
+  const [newPostazioneName, setNewPostazioneName] = useState("");
+
+  // Fetch postazioni personalizzate
+  useEffect(() => {
+    fetch("/api/postazioni").then(r => r.json()).then(data => {
+      if (Array.isArray(data)) setPostazioniCustom(data.map((p: { nome: string }) => p.nome));
+    }).catch(() => {});
+  }, []);
+
+  const POSTAZIONI = [...new Set([...POSTAZIONI_DEFAULT, ...postazioniCustom])].sort();
+
+  async function addPostazione() {
+    if (!newPostazioneName.trim()) return;
+    const res = await fetch("/api/postazioni", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nome: newPostazioneName.trim() }) });
+    if (res.ok) {
+      setPostazioniCustom(prev => [...prev, newPostazioneName.trim()]);
+      setNewPostazioneName("");
+      setShowNewPostazione(false);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || "Errore");
+    }
+  }
   const [editAssId, setEditAssId] = useState<number|null>(null);
   const [editAss, setEditAss] = useState({ orarioInizio: "", orarioFine: "", mansione: "", postazione: "", postazioneAltro: "", note: "", chiusura: false });
 
@@ -186,10 +211,12 @@ export default function EventoDetailPage() {
                         <option value="">Seleziona mansione</option>
                         {MANSIONI.map(m => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                       </select>
-                      <select value={editAss.postazione} onChange={e => setEditAss({...editAss, postazione: e.target.value, postazioneAltro: e.target.value === "altro" ? editAss.postazioneAltro : ""})} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
+                      <select value={editAss.postazione} onChange={e => { if (e.target.value === "__new__") { setShowNewPostazione(true); } else { setEditAss({...editAss, postazione: e.target.value, postazioneAltro: e.target.value === "altro" ? editAss.postazioneAltro : ""}); }}} className={`${inputCls} text-xs appearance-none cursor-pointer`}>
                         <option value="">Seleziona postazione</option>
                         {POSTAZIONI.map(p => <option key={p} value={p}>{p}</option>)}
                         <option value="altro">Altro...</option>
+                        <option disabled>───────────</option>
+                        <option value="__new__">+ Aggiungi postazione</option>
                       </select>
                       {editAss.postazione === "altro" && <input value={editAss.postazioneAltro} onChange={e => setEditAss({...editAss, postazioneAltro: e.target.value})} placeholder="Scrivi postazione" className={`${inputCls} text-xs`} />}
                       <input value={editAss.note} onChange={e => setEditAss({...editAss, note: e.target.value})} placeholder="Note" className={`${inputCls} text-xs`} />
@@ -246,6 +273,7 @@ export default function EventoDetailPage() {
                         <option value="">Seleziona postazione</option>
                         {POSTAZIONI.map(p => <option key={p} value={p}>{p}</option>)}
                         <option value="altro">Altro...</option>
+                        <option value="__new__">+ Aggiungi postazione</option>
                       </select>
                       {addForm[d.id]?.postazione === "altro" && <input value={addForm[d.id]?.postazioneAltro||""} onChange={e => setAddForm({...addForm, [d.id]: {...(addForm[d.id]||{orarioInizio:"",orarioFine:"",mansione:"",postazione:"",postazioneAltro:"",note:"",chiusura:false}), postazioneAltro: e.target.value}})} placeholder="Scrivi postazione" className={`${inputCls} text-xs`} />}
                       <button onClick={() => addAssegnazione(d.id)} className="w-full rounded-lg bg-accent py-2 text-xs font-semibold text-white">Aggiungi</button>
@@ -306,6 +334,19 @@ export default function EventoDetailPage() {
           </div>
         </div>
       </div>
+      {/* Modale nuova postazione */}
+      {showNewPostazione && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowNewPostazione(false)}>
+          <div className="w-full max-w-xs rounded-xl border border-border bg-card-bg shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-semibold text-foreground mb-3">Nuova postazione</h3>
+            <input value={newPostazioneName} onChange={e => setNewPostazioneName(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addPostazione(); }} placeholder="Nome postazione" autoFocus className={inputCls + " mb-3"} />
+            <div className="flex gap-2">
+              <button onClick={() => setShowNewPostazione(false)} className="flex-1 rounded-lg border border-border py-2 text-sm text-text-muted">Annulla</button>
+              <button onClick={addPostazione} className="flex-1 rounded-lg bg-accent py-2 text-sm font-semibold text-white">Aggiungi</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

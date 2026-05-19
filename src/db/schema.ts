@@ -207,3 +207,11 @@ export const documentiDipendente = pgTable("documenti_dipendente", {
   lettoDaDipendente: boolean("letto_da_dipendente").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/* ── Postazioni personalizzate ── */
+export const postazioni = pgTable("postazioni", {
+  id: serial("id").primaryKey(),
+  nome: varchar("nome", { length: 100 }).notNull().unique(),
+  creatoDa: integer("creato_da").notNull().references(() => utenti.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

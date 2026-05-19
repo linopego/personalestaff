@@ -71,6 +71,13 @@
       "when": 1777476967660,
       "tag": "0009_slow_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779207114450,
+      "tag": "0010_fancy_caretaker",
+      "breakpoints": true
     }
   ]
 }
