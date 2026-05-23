@@ -66,32 +66,39 @@ function fmtOreMin(ore: number) {
    ═══════════════════════════════════════════ */
 
 function calcolaOrePerGiorno(timbrature: ApiTimbratura[]): Map<string, { ore: number; sede: string | null }> {
-  // Raggruppa per giorno
-  const perGiorno = new Map<string, ApiTimbratura[]>();
-  for (const t of timbrature) {
-    const giorno = t.orario.slice(0, 10);
-    if (!perGiorno.has(giorno)) perGiorno.set(giorno, []);
-    perGiorno.get(giorno)!.push(t);
-  }
-
+  const sorted = [...timbrature].sort((a, b) => a.orario.localeCompare(b.orario));
+  const used = new Set<number>();
   const result = new Map<string, { ore: number; sede: string | null }>();
-  for (const [giorno, ts] of perGiorno) {
-    const entrate = ts.filter((t) => t.tipo === "Entrata").sort((a, b) => a.orario.localeCompare(b.orario));
-    const uscite = ts.filter((t) => t.tipo === "Uscita").sort((a, b) => a.orario.localeCompare(b.orario));
 
-    let oreTot = 0;
-    let sede: string | null = null;
-    for (let i = 0; i < entrate.length; i++) {
-      if (!sede) sede = entrate[i].sedeNome;
-      if (uscite[i]) {
-        const eTime = new Date(entrate[i].orario).getTime();
-        const uTime = new Date(uscite[i].orario).getTime();
-        let diff = (uTime - eTime) / 3600000;
-        if (diff < 0) diff += 24;
-        oreTot += diff;
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].tipo !== "Entrata" || used.has(i)) continue;
+    used.add(i);
+    const entrata = sorted[i];
+
+    let uscita: ApiTimbratura | null = null;
+    for (let j = i + 1; j < sorted.length; j++) {
+      if (sorted[j].tipo === "Uscita" && !used.has(j)) {
+        uscita = sorted[j];
+        used.add(j);
+        break;
       }
     }
-    result.set(giorno, { ore: Math.round(oreTot * 100) / 100, sede });
+
+    if (uscita) {
+      const eTime = new Date(entrata.orario).getTime();
+      const uTime = new Date(uscita.orario).getTime();
+      const diff = Math.max(0, (uTime - eTime) / 3600000);
+      const localDate = isoD(new Date(entrata.orario));
+
+      const existing = result.get(localDate) || { ore: 0, sede: null };
+      existing.ore += diff;
+      if (!existing.sede) existing.sede = entrata.sedeNome;
+      result.set(localDate, existing);
+    }
+  }
+
+  for (const [key, value] of result) {
+    result.set(key, { ...value, ore: Math.round(value.ore * 100) / 100 });
   }
   return result;
 }
