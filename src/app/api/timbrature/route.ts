@@ -45,7 +45,8 @@ export async function GET(req: NextRequest) {
     conditions.push(lte(timbrature.orario, d));
   }
 
-  const result = await db
+  const hasDateFilter = !!(dataInizio || dataFine);
+  const query = db
     .select({
       id: timbrature.id,
       userId: timbrature.userId,
@@ -67,8 +68,9 @@ export async function GET(req: NextRequest) {
     .innerJoin(utenti, eq(timbrature.userId, utenti.id))
     .leftJoin(sedi, eq(timbrature.sedeId, sedi.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(timbrature.orario))
-    .limit(500);
+    .orderBy(desc(timbrature.orario));
+
+  const result = hasDateFilter ? await query : await query.limit(500);
 
   return NextResponse.json(result);
 }
