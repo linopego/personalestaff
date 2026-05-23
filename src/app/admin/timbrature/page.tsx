@@ -102,29 +102,46 @@ function fromApi(r: ApiTimbratura): Timbratura {
 }
 
 function parseTurni(timbrature: Timbratura[]): TurnoCalcolato[] {
-  const grouped = new Map<string, Timbratura[]>();
+  // Raggruppa per userId, poi paira cronologicamente (come lo staff)
+  const byUser = new Map<number, Timbratura[]>();
   for (const t of timbrature) {
-    const key = `${t.userId}|${t.data}`;
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(t);
+    if (!byUser.has(t.userId)) byUser.set(t.userId, []);
+    byUser.get(t.userId)!.push(t);
   }
 
   const turni: TurnoCalcolato[] = [];
-  for (const entries of grouped.values()) {
-    const entrate = entries.filter((e) => e.tipo === "Entrata").sort((a, b) => a.orario.localeCompare(b.orario));
-    const uscite = entries.filter((e) => e.tipo === "Uscita").sort((a, b) => a.orario.localeCompare(b.orario));
-    for (let i = 0; i < entrate.length; i++) {
-      const ent = entrate[i];
-      const usc = uscite[i] ?? null;
-      let ore: number | null = null;
-      if (usc) {
-        const [eh, em] = ent.orario.split(":").map(Number);
-        const [uh, um] = usc.orario.split(":").map(Number);
-        let diff = uh * 60 + um - (eh * 60 + em);
-        if (diff < 0) diff += 24 * 60; // turno notturno
-        ore = Math.round((diff / 60) * 100) / 100;
+  for (const records of byUser.values()) {
+    const sorted = [...records].sort((a, b) => {
+      const cmp = a.data.localeCompare(b.data);
+      if (cmp !== 0) return cmp;
+      return a.orario.localeCompare(b.orario);
+    });
+
+    let i = 0;
+    while (i < sorted.length) {
+      if (sorted[i].tipo === "Entrata") {
+        const ent = sorted[i];
+        let usc: Timbratura | null = null;
+        // Cerca la prossima uscita per questo utente
+        if (i + 1 < sorted.length && sorted[i + 1].tipo === "Uscita") {
+          usc = sorted[i + 1];
+          i += 2;
+        } else {
+          i += 1;
+        }
+        let ore: number | null = null;
+        if (usc) {
+          // Calcola ore usando timestamp completo per turni cross-day
+          const entMs = new Date(`${ent.data}T${ent.orario}`).getTime();
+          const uscMs = new Date(`${usc.data}T${usc.orario}`).getTime();
+          ore = Math.round(((uscMs - entMs) / 3600000) * 100) / 100;
+          if (ore < 0) ore += 24; // fallback turno notturno
+        }
+        turni.push({ entrata: ent, uscita: usc, oreTurno: ore });
+      } else {
+        // Uscita senza entrata — skip
+        i += 1;
       }
-      turni.push({ entrata: ent, uscita: usc, oreTurno: ore });
     }
   }
   turni.sort((a, b) => {
